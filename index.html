@@ -312,39 +312,69 @@
     <script>
         // ============ КОНФИГУРАЦИЯ ============
         const SYNC_URL = 'https://script.google.com/macros/s/AKfycbzOLHQ2L9qQocsJ1iBVTYVXbQRxId8Ox77_s4AZVUNs3CQlZAnYfJDBgJeEuvxx4Kr-lg/exec';
-        const SYNC_INTERVAL = 15000; // 15 секунд
+        const SYNC_INTERVAL = 15000;
 
-        // ============ ДАННЫЕ ============
+        // ============ ДАННЫЕ (ВСЕ ПО 1) ============
         const defaultData = {
             supplies: {
-                'Скотч желтый':50,'Скотч прозрачный':50,'Стрэйтч':30,
-                'Крючки':100,'Пластик белый':20,'Коробки':40,
-                'Грунт':15,'Рамки черные':25,'Рамки белые':25,
-                'Оргстекло':10,'Доски':30
+                'Скотч желтый': 1,
+                'Скотч прозрачный': 1,
+                'Стрэйтч': 1,
+                'Крючки черные': 1,
+                'Крючки белые': 1,
+                'Пластик белый': 1,
+                'Коробки': 1,
+                'Грунт': 1,
+                'Рамки черные': 1,
+                'Рамки белые': 1,
+                'Оргстекло': 1,
+                'Доски': 1
             },
             production: {
-                'Пластик нарезанный':0,'Сушка грунта':0,
-                'Сушка полей':0,'Готовые рамки':0,'Кривые':0
+                'Пластик нарезанный': 1,
+                'Сушка грунта': 1,
+                'Сушка полей': 1,
+                'Готовые рамки': 1,
+                'Кривые': 1
             },
             assembly: {
-                'Непроверенные черные':0,'Непроверенные белые':0,
-                'Проверенные черные':0,'Проверенные белые':0,
-                'Упакованные черные':0,'Упакованные белые':0,
-                'Отдано черные':0,'Отдано белые':0
+                'Непроверенные черные': 1,
+                'Непроверенные белые': 1,
+                'Проверенные черные': 1,
+                'Проверенные белые': 1,
+                'Упакованные черные': 1,
+                'Упакованные белые': 1,
+                'Отдано черные': 1,
+                'Отдано белые': 1
             }
         };
 
         const defaultLimits = {
-            'Скотч желтый':10,'Скотч прозрачный':10,'Стрэйтч':5,
-            'Крючки':20,'Пластик белый':5,'Коробки':10,
-            'Грунт':3,'Рамки черные':5,'Рамки белые':5,
-            'Оргстекло':3,'Доски':5,'Пластик нарезанный':5,
-            'Сушка грунта':3,'Сушка полей':3,
-            'Готовые рамки':5,'Кривые':2,
-            'Непроверенные черные':5,'Непроверенные белые':5,
-            'Проверенные черные':5,'Проверенные белые':5,
-            'Упакованные черные':5,'Упакованные белые':5,
-            'Отдано черные':0,'Отдано белые':0
+            'Скотч желтый': 1,
+            'Скотч прозрачный': 1,
+            'Стрэйтч': 1,
+            'Крючки черные': 1,
+            'Крючки белые': 1,
+            'Пластик белый': 1,
+            'Коробки': 1,
+            'Грунт': 1,
+            'Рамки черные': 1,
+            'Рамки белые': 1,
+            'Оргстекло': 1,
+            'Доски': 1,
+            'Пластик нарезанный': 1,
+            'Сушка грунта': 1,
+            'Сушка полей': 1,
+            'Готовые рамки': 1,
+            'Кривые': 1,
+            'Непроверенные черные': 1,
+            'Непроверенные белые': 1,
+            'Проверенные черные': 1,
+            'Проверенные белые': 1,
+            'Упакованные черные': 1,
+            'Упакованные белые': 1,
+            'Отдано черные': 1,
+            'Отдано белые': 1
         };
 
         let data = JSON.parse(localStorage.getItem('pd') || JSON.stringify(defaultData));
@@ -366,10 +396,7 @@
             updateStats();
             renderLimits();
             
-            // Загружаем данные из облака при старте
             await loadFromCloud();
-            
-            // Запускаем периодическую синхронизацию
             startAutoSync();
         }
 
@@ -387,18 +414,14 @@
             setTimeout(() => t.style.display = 'none', 1500);
         }
 
-        // ============ СИНХРОНИЗАЦИЯ (АВТОМАТИЧЕСКАЯ) ============
+        // ============ СИНХРОНИЗАЦИЯ ============
         function startAutoSync() {
             stopAutoSync();
             syncTimer = setInterval(syncData, SYNC_INTERVAL);
-            console.log('🔄 Автосинхронизация запущена (каждые ' + SYNC_INTERVAL/1000 + ' сек)');
         }
 
         function stopAutoSync() {
-            if(syncTimer) { 
-                clearInterval(syncTimer); 
-                syncTimer = null; 
-            }
+            if(syncTimer) { clearInterval(syncTimer); syncTimer = null; }
         }
 
         async function loadFromCloud() {
@@ -414,7 +437,6 @@
                     const cloudTime = cloud.t || 0;
                     
                     if(isFirstSync || cloudTime > localTime) {
-                        // Данные из облака новее или первый запуск
                         data = cloud.d;
                         if(cloud.l) limits = cloud.l;
                         if(cloud.h) history = cloud.h;
@@ -422,14 +444,11 @@
                         
                         render();
                         updateStats();
-                        updateSyncStatus('sync-online', '🟢 Данные загружены из облака');
-                        console.log('✅ Данные загружены из облака');
+                        updateSyncStatus('sync-online', '🟢 Данные загружены');
                     } else {
-                        // Локальные данные новее - отправляем в облако
                         await pushToCloud();
                     }
                 } else {
-                    // Облако пустое - отправляем свои данные
                     await pushToCloud();
                 }
                 
@@ -438,7 +457,6 @@
             } catch(e) {
                 console.error('Ошибка загрузки:', e);
                 updateSyncStatus('sync-error', '🔴 Ошибка загрузки');
-                // Пробуем отправить свои данные
                 try { await pushToCloud(); } catch(x) {}
             }
         }
@@ -463,17 +481,15 @@
                 
                 localStorage.setItem('lt', ts);
                 updateSyncStatus('sync-online', '🟢 Синхронизировано');
-                console.log('✅ Данные отправлены в облако');
                 
             } catch(e) {
                 console.error('Ошибка отправки:', e);
-                updateSyncStatus('sync-error', '🔴 Ошибка отправки');
+                updateSyncStatus('sync-error', '🔴 Ошибка');
             }
         }
 
         async function syncData() {
             try {
-                // Сначала пробуем загрузить данные из облака
                 const resp = await fetch(SYNC_URL + '?t=' + Date.now());
                 const txt = await resp.text();
                 const cloud = JSON.parse(txt);
@@ -482,19 +498,17 @@
                 const cloudTime = cloud.t || 0;
                 
                 if(cloud.d && cloudTime > localTime) {
-                    // В облаке данные новее
                     data = cloud.d;
                     if(cloud.l) limits = cloud.l;
                     if(cloud.h) history = cloud.h;
                     localStorage.setItem('lt', cloudTime);
                     render();
                     updateStats();
-                    updateSyncStatus('sync-online', '🟢 Обновлено из облака');
+                    updateSyncStatus('sync-online', '🟢 Обновлено');
                 } else if(cloudTime < localTime) {
-                    // Локальные данные новее
                     await pushToCloud();
                 } else {
-                    updateSyncStatus('sync-online', '🟢 Синхронизировано');
+                    updateSyncStatus('sync-online', '🟢 OK');
                 }
             } catch(e) {
                 console.error('Ошибка синхронизации:', e);
@@ -507,7 +521,7 @@
             pushToCloud().then(() => {
                 toast('✅ Синхронизировано');
             }).catch(() => {
-                toast('❌ Ошибка синхронизации');
+                toast('❌ Ошибка');
             });
         }
 
@@ -556,7 +570,7 @@
         function renderLimits() {
             const grid = document.getElementById('limitsGrid');
             let items = {};
-            for(let c in data) for(let i in data[c]) items[i] = limits[i] || 0;
+            for(let c in data) for(let i in data[c]) items[i] = limits[i] || 1;
             
             grid.innerHTML = Object.keys(items).sort().map(i => `
                 <div class="limit-item">
@@ -583,7 +597,7 @@
         }
 
         function quickEditLimit(item) {
-            const v = prompt(`Минимальный запас для "${item}":`, limits[item] || 0);
+            const v = prompt(`Минимальный запас для "${item}":`, limits[item] || 1);
             if(v !== null) {
                 limits[item] = Math.max(0, parseInt(v) || 0);
                 save();
@@ -628,7 +642,7 @@
             const critical = [];
             for(let c in data) for(let i in data[c]) {
                 const v = data[c][i];
-                const min = limits[i] || 0;
+                const min = limits[i] || 1;
                 if(v <= min) critical.push({i, v, min});
             }
             const div = document.getElementById('alerts');
@@ -640,7 +654,7 @@
         }
 
         function createItem(cat, item, val, sub) {
-            const min = limits[item] || 0;
+            const min = limits[item] || 1;
             const crit = val <= min;
             return `<div class="${sub?'sub-item':'item'}">
                 <div class="item-name">
@@ -662,10 +676,18 @@
             let s = '<h3 class="subsection-title">Скотч</h3>';
             s += createItem('supplies','Скотч желтый',data.supplies['Скотч желтый'],true);
             s += createItem('supplies','Скотч прозрачный',data.supplies['Скотч прозрачный'],true);
-            ['Стрэйтч','Крючки','Пластик белый','Коробки','Грунт'].forEach(i => s += createItem('supplies',i,data.supplies[i]));
+            
+            s += '<h3 class="subsection-title">Крючки</h3>';
+            s += createItem('supplies','Крючки черные',data.supplies['Крючки черные'],true);
+            s += createItem('supplies','Крючки белые',data.supplies['Крючки белые'],true);
+            
+            s += '<h3 class="subsection-title">Прочее</h3>';
+            ['Стрэйтч','Пластик белый','Коробки','Грунт'].forEach(i => s += createItem('supplies',i,data.supplies[i]));
+            
             s += '<h3 class="subsection-title">Рамки</h3>';
             s += createItem('supplies','Рамки черные',data.supplies['Рамки черные'],true);
             s += createItem('supplies','Рамки белые',data.supplies['Рамки белые'],true);
+            
             ['Оргстекло','Доски'].forEach(i => s += createItem('supplies',i,data.supplies[i]));
             document.getElementById('supplies').innerHTML = s;
 
@@ -710,20 +732,21 @@
                 data.assembly['Упакованные черные']+data.assembly['Упакованные белые'];
             const shipped = data.assembly['Отдано черные']+data.assembly['Отдано белые'];
             const tape = data.supplies['Скотч желтый']+data.supplies['Скотч прозрачный'];
+            const hooks = data.supplies['Крючки черные']+data.supplies['Крючки белые'];
             let crit = 0;
-            for(let c in data) for(let i in data[c]) if(data[c][i] <= (limits[i]||0)) crit++;
+            for(let c in data) for(let i in data[c]) if(data[c][i] <= (limits[i]||1)) crit++;
             
             document.getElementById('statsGrid').innerHTML = `
                 <div class="stat-card"><h4>Рамок в работе</h4><div class="stat-value">${total}</div></div>
                 <div class="stat-card"><h4>Отгружено</h4><div class="stat-value">${shipped}</div></div>
-                <div class="stat-card"><h4>Скотча</h4><div class="stat-value">${tape}</div></div>
+                <div class="stat-card"><h4>Скотча всего</h4><div class="stat-value">${tape}</div></div>
+                <div class="stat-card"><h4>Крючков всего</h4><div class="stat-value">${hooks}</div></div>
                 <div class="stat-card"><h4>Критических</h4><div class="stat-value" style="color:var(--danger-red)">${crit}</div></div>
-                <div class="stat-card"><h4>Изменений</h4><div class="stat-value">${history.length}</div></div>
                 <div class="stat-card"><h4>Синхронизация</h4><div class="stat-value" style="font-size:24px">🟢</div></div>
             `;
         }
 
-        // Запуск приложения
+        // Запуск
         init();
     </script>
 </body>
