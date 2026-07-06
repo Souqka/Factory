@@ -78,7 +78,6 @@
         }
         .btn-sm:hover { background: var(--hover-bg); }
         .btn-sm.active { background: var(--accent-green); color: white; border-color: var(--accent-green); }
-        .btn-sm.sync-active { background: #007bff; color: white; border-color: #007bff; }
 
         .sections-container {
             display: grid;
@@ -226,37 +225,6 @@
             background: var(--bg-primary); color: var(--text-primary);
         }
 
-        .modal {
-            display: none; position: fixed; top: 0; left: 0;
-            width: 100%; height: 100%; background: rgba(0,0,0,0.5);
-            justify-content: center; align-items: center; z-index: 1000;
-        }
-        .modal.show { display: flex; }
-
-        .modal-content {
-            background: var(--card-bg); border-radius: 15px; padding: 30px;
-            border: 2px solid var(--border-color); box-shadow: var(--shadow);
-            max-width: 500px; width: 90%; max-height: 80vh; overflow-y: auto;
-        }
-        .modal-content h2 { color: var(--accent-green); margin-bottom: 20px; }
-        .modal-input {
-            width: 100%; padding: 12px; margin: 10px 0;
-            border: 2px solid var(--border-color); border-radius: 8px;
-            font-size: 16px; background: var(--bg-primary); color: var(--text-primary);
-        }
-        .modal-input:focus { outline: none; border-color: var(--accent-green); }
-        .modal-buttons { display: flex; gap: 10px; margin-top: 20px; justify-content: flex-end; }
-        .save-btn {
-            background: var(--accent-green); color: white;
-            padding: 10px 20px; border: none; border-radius: 8px;
-            cursor: pointer; font-size: 16px;
-        }
-        .cancel-btn {
-            background: #95a5a6; color: white;
-            padding: 10px 20px; border: none; border-radius: 8px;
-            cursor: pointer; font-size: 16px;
-        }
-
         .toast {
             position: fixed; bottom: 20px; right: 20px;
             background: var(--accent-green); color: white;
@@ -282,8 +250,8 @@
         <header class="header">
             <h1>🏭 Управление производством</h1>
             <div class="header-controls">
-                <span class="sync-status sync-offline" id="syncStatus">⚪ Нет синхронизации</span>
-                <button class="btn-sm" onclick="openSyncModal()" id="syncBtn">🔄 Синхронизация</button>
+                <span class="sync-status sync-loading" id="syncStatus">🔄 Подключение...</span>
+                <button class="btn-sm" onclick="syncNow()">🔄 Синхронизировать</button>
                 <button class="btn-sm" onclick="toggleLimits()" id="limitsBtn">⚙️ Мин. запасы</button>
                 <button class="btn-sm" onclick="toggleTheme()">🌙 Тема</button>
             </div>
@@ -293,7 +261,7 @@
             <h2 class="section-title">⚙️ Минимальные запасы</h2>
             <div class="limits-grid" id="limitsGrid"></div>
             <div style="margin-top:20px;text-align:right">
-                <button class="save-btn" onclick="saveLimits()">💾 Сохранить</button>
+                <button class="btn btn-p10" onclick="saveLimits()">💾 Сохранить</button>
             </div>
         </div>
 
@@ -339,24 +307,13 @@
         </div>
     </div>
 
-    <!-- Модальное окно синхронизации -->
-    <div class="modal" id="syncModal">
-        <div class="modal-content">
-            <h2>🔄 Синхронизация с Google</h2>
-            <p style="color:var(--text-secondary);margin-bottom:15px">
-                Вставьте URL от Google Apps Script
-            </p>
-            <input type="text" class="modal-input" id="webappUrl" placeholder="https://script.google.com/macros/s/...">
-            <div class="modal-buttons">
-                <button class="cancel-btn" onclick="closeSyncModal()">Отмена</button>
-                <button class="save-btn" onclick="saveSyncConfig()">Подключить</button>
-            </div>
-        </div>
-    </div>
-
     <div class="toast" id="toast">✓ Сохранено</div>
 
     <script>
+        // ============ КОНФИГУРАЦИЯ ============
+        const SYNC_URL = 'https://script.google.com/macros/s/AKfycbzOLHQ2L9qQocsJ1iBVTYVXbQRxId8Ox77_s4AZVUNs3CQlZAnYfJDBgJeEuvxx4Kr-lg/exec';
+        const SYNC_INTERVAL = 15000; // 15 секунд
+
         // ============ ДАННЫЕ ============
         const defaultData = {
             supplies: {
@@ -394,18 +351,26 @@
         let limits = JSON.parse(localStorage.getItem('pl') || JSON.stringify(defaultLimits));
         let history = JSON.parse(localStorage.getItem('ph') || '[]');
         let dark = JSON.parse(localStorage.getItem('dm') || 'false');
-        let syncUrl = localStorage.getItem('su') || '';
         let showLimits = false;
         let syncTimer = null;
+        let isFirstSync = true;
 
         // ============ ИНИЦИАЛИЗАЦИЯ ============
-        function init() {
-            if(dark) { document.body.setAttribute('data-theme','dark'); }
+        async function init() {
+            if(dark) { 
+                document.body.setAttribute('data-theme','dark');
+                document.querySelector('.btn-sm:nth-child(4)').textContent = '☀️ Тема';
+            }
+            
             render();
             updateStats();
             renderLimits();
-            if(syncUrl) startSync();
-            document.getElementById('webappUrl').value = syncUrl;
+            
+            // Загружаем данные из облака при старте
+            await loadFromCloud();
+            
+            // Запускаем периодическую синхронизацию
+            startAutoSync();
         }
 
         function save() {
@@ -413,7 +378,6 @@
             localStorage.setItem('pl', JSON.stringify(limits));
             localStorage.setItem('ph', JSON.stringify(history));
             localStorage.setItem('dm', JSON.stringify(dark));
-            localStorage.setItem('su', syncUrl);
             toast('✓ Сохранено');
         }
 
@@ -423,83 +387,63 @@
             setTimeout(() => t.style.display = 'none', 1500);
         }
 
-        // ============ СИНХРОНИЗАЦИЯ ============
-        function openSyncModal() {
-            document.getElementById('webappUrl').value = syncUrl;
-            document.getElementById('syncModal').classList.add('show');
+        // ============ СИНХРОНИЗАЦИЯ (АВТОМАТИЧЕСКАЯ) ============
+        function startAutoSync() {
+            stopAutoSync();
+            syncTimer = setInterval(syncData, SYNC_INTERVAL);
+            console.log('🔄 Автосинхронизация запущена (каждые ' + SYNC_INTERVAL/1000 + ' сек)');
         }
 
-        function closeSyncModal() {
-            document.getElementById('syncModal').classList.remove('show');
-        }
-
-        function saveSyncConfig() {
-            syncUrl = document.getElementById('webappUrl').value.trim();
-            if(!syncUrl) { alert('Введите URL'); return; }
-            save();
-            closeSyncModal();
-            startSync();
-            alert('✅ Синхронизация настроена!');
-        }
-
-        function startSync() {
-            stopSync();
-            if(syncUrl) {
-                updateSyncStatus('sync-loading','🔄 Подключение...');
-                syncFromCloud();
-                syncTimer = setInterval(syncFromCloud, 30000);
-                document.getElementById('syncBtn').classList.add('sync-active');
-                document.getElementById('syncBtn').textContent = '🔄 Активна';
+        function stopAutoSync() {
+            if(syncTimer) { 
+                clearInterval(syncTimer); 
+                syncTimer = null; 
             }
         }
 
-        function stopSync() {
-            if(syncTimer) { clearInterval(syncTimer); syncTimer = null; }
-            if(!syncUrl) {
-                updateSyncStatus('sync-offline','⚪ Нет синхронизации');
-                document.getElementById('syncBtn').classList.remove('sync-active');
-                document.getElementById('syncBtn').textContent = '🔄 Синхронизация';
-            }
-        }
-
-        function updateSyncStatus(cls, txt) {
-            const el = document.getElementById('syncStatus');
-            el.className = 'sync-status ' + cls;
-            el.innerHTML = txt;
-        }
-
-        async function syncFromCloud() {
-            if(!syncUrl) return;
+        async function loadFromCloud() {
             try {
-                updateSyncStatus('sync-loading','🔄 Загрузка...');
-                const resp = await fetch(syncUrl + '?t=' + Date.now());
+                updateSyncStatus('sync-loading', '🔄 Загрузка данных...');
+                
+                const resp = await fetch(SYNC_URL + '?t=' + Date.now());
                 const txt = await resp.text();
                 const cloud = JSON.parse(txt);
-                const localTime = parseInt(localStorage.getItem('lt') || '0');
-                const cloudTime = cloud.t || 0;
                 
-                if(cloud.d && cloudTime > localTime) {
-                    data = cloud.d;
-                    if(cloud.l) limits = cloud.l;
-                    if(cloud.h) history = cloud.h;
-                    localStorage.setItem('lt', cloudTime);
-                    render();
-                    updateStats();
-                    updateSyncStatus('sync-online','🟢 Загружено');
-                } else if(cloudTime < localTime) {
-                    await pushToCloud();
+                if(cloud && cloud.d) {
+                    const localTime = parseInt(localStorage.getItem('lt') || '0');
+                    const cloudTime = cloud.t || 0;
+                    
+                    if(isFirstSync || cloudTime > localTime) {
+                        // Данные из облака новее или первый запуск
+                        data = cloud.d;
+                        if(cloud.l) limits = cloud.l;
+                        if(cloud.h) history = cloud.h;
+                        localStorage.setItem('lt', cloudTime);
+                        
+                        render();
+                        updateStats();
+                        updateSyncStatus('sync-online', '🟢 Данные загружены из облака');
+                        console.log('✅ Данные загружены из облака');
+                    } else {
+                        // Локальные данные новее - отправляем в облако
+                        await pushToCloud();
+                    }
                 } else {
-                    updateSyncStatus('sync-online','🟢 OK');
+                    // Облако пустое - отправляем свои данные
+                    await pushToCloud();
                 }
+                
+                isFirstSync = false;
+                
             } catch(e) {
-                console.error(e);
-                updateSyncStatus('sync-error','🔴 Ошибка');
+                console.error('Ошибка загрузки:', e);
+                updateSyncStatus('sync-error', '🔴 Ошибка загрузки');
+                // Пробуем отправить свои данные
                 try { await pushToCloud(); } catch(x) {}
             }
         }
 
         async function pushToCloud() {
-            if(!syncUrl) return;
             const ts = Date.now();
             const payload = JSON.stringify({
                 d: data,
@@ -509,28 +453,80 @@
             });
             
             try {
-                updateSyncStatus('sync-loading','🔄 Отправка...');
+                updateSyncStatus('sync-loading', '🔄 Отправка...');
                 
-                // Отправка через POST
-                await fetch(syncUrl, {
+                await fetch(SYNC_URL, {
                     method: 'POST',
                     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                     body: payload
                 });
                 
                 localStorage.setItem('lt', ts);
-                updateSyncStatus('sync-online','🟢 OK');
+                updateSyncStatus('sync-online', '🟢 Синхронизировано');
+                console.log('✅ Данные отправлены в облако');
+                
             } catch(e) {
-                console.error(e);
-                updateSyncStatus('sync-error','🔴 Ошибка');
+                console.error('Ошибка отправки:', e);
+                updateSyncStatus('sync-error', '🔴 Ошибка отправки');
             }
+        }
+
+        async function syncData() {
+            try {
+                // Сначала пробуем загрузить данные из облака
+                const resp = await fetch(SYNC_URL + '?t=' + Date.now());
+                const txt = await resp.text();
+                const cloud = JSON.parse(txt);
+                
+                const localTime = parseInt(localStorage.getItem('lt') || '0');
+                const cloudTime = cloud.t || 0;
+                
+                if(cloud.d && cloudTime > localTime) {
+                    // В облаке данные новее
+                    data = cloud.d;
+                    if(cloud.l) limits = cloud.l;
+                    if(cloud.h) history = cloud.h;
+                    localStorage.setItem('lt', cloudTime);
+                    render();
+                    updateStats();
+                    updateSyncStatus('sync-online', '🟢 Обновлено из облака');
+                } else if(cloudTime < localTime) {
+                    // Локальные данные новее
+                    await pushToCloud();
+                } else {
+                    updateSyncStatus('sync-online', '🟢 Синхронизировано');
+                }
+            } catch(e) {
+                console.error('Ошибка синхронизации:', e);
+                updateSyncStatus('sync-error', '🔴 Ошибка');
+            }
+        }
+
+        function syncNow() {
+            updateSyncStatus('sync-loading', '🔄 Синхронизация...');
+            pushToCloud().then(() => {
+                toast('✅ Синхронизировано');
+            }).catch(() => {
+                toast('❌ Ошибка синхронизации');
+            });
+        }
+
+        function updateSyncStatus(cls, txt) {
+            const el = document.getElementById('syncStatus');
+            el.className = 'sync-status ' + cls;
+            el.innerHTML = txt;
         }
 
         // ============ ТЕМА И ВКЛАДКИ ============
         function toggleTheme() {
             dark = !dark;
-            if(dark) document.body.setAttribute('data-theme','dark');
-            else document.body.removeAttribute('data-theme');
+            if(dark) {
+                document.body.setAttribute('data-theme','dark');
+                document.querySelector('.btn-sm:nth-child(4)').textContent = '☀️ Тема';
+            } else {
+                document.body.removeAttribute('data-theme');
+                document.querySelector('.btn-sm:nth-child(4)').textContent = '🌙 Тема';
+            }
             save();
         }
 
@@ -582,7 +578,7 @@
             save();
             render();
             checkAlerts();
-            if(syncUrl) pushToCloud();
+            pushToCloud();
             toast('✅ Лимиты сохранены');
         }
 
@@ -610,7 +606,7 @@
             render();
             checkAlerts();
             save();
-            if(syncUrl) pushToCloud();
+            pushToCloud();
         }
 
         function setValue(cat, item, val) {
@@ -625,7 +621,7 @@
             render();
             checkAlerts();
             save();
-            if(syncUrl) pushToCloud();
+            pushToCloud();
         }
 
         function checkAlerts() {
@@ -700,7 +696,12 @@
         }
 
         function clearHistory() {
-            if(confirm('Очистить историю?')) { history = []; save(); render(); }
+            if(confirm('Очистить историю?')) { 
+                history = []; 
+                save(); 
+                render(); 
+                pushToCloud();
+            }
         }
 
         function updateStats() {
@@ -718,11 +719,11 @@
                 <div class="stat-card"><h4>Скотча</h4><div class="stat-value">${tape}</div></div>
                 <div class="stat-card"><h4>Критических</h4><div class="stat-value" style="color:var(--danger-red)">${crit}</div></div>
                 <div class="stat-card"><h4>Изменений</h4><div class="stat-value">${history.length}</div></div>
-                <div class="stat-card"><h4>Синхронизация</h4><div class="stat-value" style="font-size:24px">${syncUrl?'🟢':'⚪'}</div></div>
+                <div class="stat-card"><h4>Синхронизация</h4><div class="stat-value" style="font-size:24px">🟢</div></div>
             `;
         }
 
-        // Старт
+        // Запуск приложения
         init();
     </script>
 </body>
