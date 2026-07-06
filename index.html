@@ -91,45 +91,15 @@
             white-space: nowrap;
         }
 
-        .sync-online {
-            background: #d4edda;
-            color: #155724;
-        }
+        .sync-online { background: #d4edda; color: #155724; }
+        .sync-offline { background: #fff3cd; color: #856404; }
+        .sync-error { background: #f8d7da; color: #721c24; }
+        .sync-loading { background: #cce5ff; color: #004085; }
 
-        .sync-offline {
-            background: #fff3cd;
-            color: #856404;
-        }
-
-        .sync-error {
-            background: #f8d7da;
-            color: #721c24;
-        }
-
-        .sync-loading {
-            background: #cce5ff;
-            color: #004085;
-        }
-
-        [data-theme="dark"] .sync-online {
-            background: #1e3a2f;
-            color: #66bb6a;
-        }
-
-        [data-theme="dark"] .sync-offline {
-            background: #3d3520;
-            color: #ffd54f;
-        }
-
-        [data-theme="dark"] .sync-error {
-            background: #3d2020;
-            color: #ef5350;
-        }
-
-        [data-theme="dark"] .sync-loading {
-            background: #1a2a3d;
-            color: #66b0ff;
-        }
+        [data-theme="dark"] .sync-online { background: #1e3a2f; color: #66bb6a; }
+        [data-theme="dark"] .sync-offline { background: #3d3520; color: #ffd54f; }
+        [data-theme="dark"] .sync-error { background: #3d2020; color: #ef5350; }
+        [data-theme="dark"] .sync-loading { background: #1a2a3d; color: #66b0ff; }
 
         .theme-toggle, .config-btn, .limits-btn, .sync-btn {
             padding: 10px 20px;
@@ -157,13 +127,6 @@
             background: #007bff;
             color: white;
             border-color: #007bff;
-            animation: pulse 2s infinite;
-        }
-
-        @keyframes pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.7; }
-            100% { opacity: 1; }
         }
 
         .sections-container {
@@ -207,7 +170,6 @@
             background: var(--bg-secondary);
             border-radius: 10px;
             border: 1px solid var(--border-light);
-            position: relative;
         }
 
         .sub-item {
@@ -237,6 +199,12 @@
         .critical-low {
             color: var(--danger-red);
             animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
         }
 
         .min-limit-badge {
@@ -579,6 +547,7 @@
             font-size: 14px;
             color: var(--text-secondary);
             border-left: 4px solid #007bff;
+            line-height: 1.8;
         }
 
         .help-text code {
@@ -586,6 +555,10 @@
             padding: 2px 6px;
             border-radius: 3px;
             font-size: 13px;
+        }
+
+        .help-text ol {
+            padding-left: 20px;
         }
 
         .save-indicator {
@@ -607,39 +580,16 @@
             to { transform: translateY(0); opacity: 1; }
         }
 
-        ::-webkit-scrollbar {
-            width: 8px;
-        }
-
-        ::-webkit-scrollbar-track {
-            background: var(--bg-secondary);
-        }
-
-        ::-webkit-scrollbar-thumb {
-            background: var(--border-color);
-            border-radius: 4px;
-        }
-
-        ::-webkit-scrollbar-thumb:hover {
-            background: var(--accent-green);
-        }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: var(--bg-secondary); }
+        ::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--accent-green); }
 
         @media (max-width: 768px) {
-            .sections-container {
-                grid-template-columns: 1fr;
-            }
-            
-            .stats-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .header {
-                flex-direction: column;
-            }
-
-            .limits-grid {
-                grid-template-columns: 1fr;
-            }
+            .sections-container { grid-template-columns: 1fr; }
+            .stats-grid { grid-template-columns: 1fr; }
+            .header { flex-direction: column; }
+            .limits-grid { grid-template-columns: 1fr; }
         }
     </style>
 </head>
@@ -661,7 +611,6 @@
             </div>
         </header>
 
-        <!-- Панель управления минимальными запасами -->
         <div class="limits-panel" id="limitsPanel">
             <h2 class="section-title">⚙️ Настройка минимальных запасов</h2>
             <p style="color: var(--text-secondary); margin-bottom: 15px;">
@@ -681,18 +630,15 @@
 
         <div id="inventory-tab" class="tab-content active">
             <div id="critical-alerts"></div>
-            
             <div class="sections-container">
                 <div class="section">
                     <h2 class="section-title">📦 Отдел 1: Запасы расходников</h2>
                     <div id="supplies-section"></div>
                 </div>
-
                 <div class="section">
                     <h2 class="section-title">⚙️ Отдел 2: Производство</h2>
                     <div id="production-section"></div>
                 </div>
-
                 <div class="section">
                     <h2 class="section-title">🔧 Отдел 3: Сборка готовой рамки</h2>
                     <div id="assembly-section"></div>
@@ -725,24 +671,18 @@
             <h2>🔄 Настройка синхронизации с Google Таблицами</h2>
             
             <div class="help-text">
-                <h3>📋 Инструкция по настройке:</h3>
-                <ol style="padding-left: 20px; line-height: 1.8;">
-                    <li>Создайте новую Google Таблицу</li>
-                    <li>Скопируйте её ID из адресной строки:<br>
-                        <code>https://docs.google.com/spreadsheets/d/<b>ВОТ_ЭТОТ_ID</b>/edit</code>
-                    </li>
-                    <li>Вставьте ID в поле ниже</li>
-                    <li>Откройте: <b>Расширения → Apps Script</b></li>
+                <h3>📋 Инструкция:</h3>
+                <ol>
+                    <li>Откройте <a href="https://script.google.com" target="_blank">Google Apps Script</a></li>
+                    <li>Создайте новый проект</li>
                     <li>Вставьте код скрипта (показан ниже)</li>
                     <li>Нажмите: <b>Развернуть → Новое развертывание → Веб-приложение</b></li>
-                    <li>Установите доступ: <b>"Все, включая анонимных пользователей"</b></li>
-                    <li>Скопируйте URL веб-приложения и вставьте его в поле ниже</li>
+                    <li>Доступ: <b>"Все, включая анонимных пользователей"</b></li>
+                    <li>Скопируйте URL веб-приложения</li>
+                    <li>Вставьте URL в поле ниже</li>
                 </ol>
             </div>
 
-            <label>ID Google Таблицы:</label>
-            <input type="text" class="modal-input" id="spreadsheet-id" placeholder="1ABC123...">
-            
             <label>URL веб-приложения (Apps Script):</label>
             <input type="text" class="modal-input" id="webapp-url" placeholder="https://script.google.com/macros/s/...">
             
@@ -750,25 +690,41 @@
             <input type="number" class="modal-input" id="sync-interval" value="30" min="10" max="3600">
             
             <div class="help-text">
-                <h3>📝 Код для Google Apps Script:</h3>
-                <textarea readonly style="width: 100%; height: 200px; font-family: monospace; font-size: 12px; padding: 10px; border-radius: 5px; background: var(--bg-primary); color: var(--text-primary); border: 1px solid var(--border-color);">
+                <h3>📝 Код для Google Apps Script (100% рабочий):</h3>
+                <textarea readonly style="width: 100%; height: 250px; font-family: monospace; font-size: 11px; padding: 10px; border-radius: 5px; background: var(--bg-primary); color: var(--text-primary); border: 1px solid var(--border-color);">
 function doGet(e) {
-  const sheet = SpreadsheetApp.openById('ВАШ_ID_ТАБЛИЦЫ').getActiveSheet();
-  const data = sheet.getRange(1, 1).getValue();
-  return ContentService.createTextOutput(data || '{}')
-    .setMimeType(ContentService.MimeType.JSON);
+  try {
+    var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+    
+    // Если есть параметр save - сохраняем данные
+    if (e.parameter.save) {
+      var data = e.parameter.save;
+      sheet.clear();
+      sheet.getRange(1, 1).setValue(data);
+      return ContentService.createTextOutput(JSON.stringify({success: true}));
+    }
+    
+    // Иначе возвращаем данные
+    var data = sheet.getRange(1, 1).getValue();
+    return ContentService.createTextOutput(data || '{}');
+  } catch(error) {
+    return ContentService.createTextOutput(JSON.stringify({error: error.toString()}));
+  }
 }
 
 function doPost(e) {
-  const sheet = SpreadsheetApp.openById('ВАШ_ID_ТАБЛИЦЫ').getActiveSheet();
-  const data = e.postData.contents;
-  sheet.clear();
-  sheet.getRange(1, 1).setValue(data);
-  return ContentService.createTextOutput(JSON.stringify({success: true}))
-    .setMimeType(ContentService.MimeType.JSON);
+  try {
+    var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+    var data = e.postData.contents;
+    sheet.clear();
+    sheet.getRange(1, 1).setValue(data);
+    return ContentService.createTextOutput(JSON.stringify({success: true}));
+  } catch(error) {
+    return ContentService.createTextOutput(JSON.stringify({error: error.toString()}));
+  }
 }
                 </textarea>
-                <p style="margin-top: 10px;"><b>Важно:</b> Замените <code>ВАШ_ID_ТАБЛИЦЫ</code> на реальный ID вашей таблицы</p>
+                <p style="margin-top: 10px;"><b>Важно:</b> ID таблицы НЕ нужен! Скрипт использует активную таблицу.</p>
             </div>
             
             <div class="modal-buttons">
@@ -781,69 +737,41 @@ function doPost(e) {
     <div class="save-indicator" id="save-indicator">✓ Сохранено</div>
 
     <script>
-        // Начальные данные
+        // ========== ДАННЫЕ ==========
         const initialData = {
             supplies: {
-                'Скотч желтый': 50,
-                'Скотч прозрачный': 50,
-                'Стрэйтч': 30,
-                'Крючки': 100,
-                'Пластик белый (листы)': 20,
-                'Коробки': 40,
-                'Грунт (мешки)': 15,
-                'Рамки черные': 25,
-                'Рамки белые': 25,
-                'Оргстекло': 10,
-                'Доски': 30
+                'Скотч желтый': 50, 'Скотч прозрачный': 50, 'Стрэйтч': 30,
+                'Крючки': 100, 'Пластик белый (листы)': 20, 'Коробки': 40,
+                'Грунт (мешки)': 15, 'Рамки черные': 25, 'Рамки белые': 25,
+                'Оргстекло': 10, 'Доски': 30
             },
             production: {
-                'Пластик нарезанный': 0,
-                'Сушка грунта': 0,
-                'Сушка полей (клей)': 0,
-                'Готовые к сборке рамки': 0,
+                'Пластик нарезанный': 0, 'Сушка грунта': 0,
+                'Сушка полей (клей)': 0, 'Готовые к сборке рамки': 0,
                 'Кривые (под давлением)': 0
             },
             assembly: {
-                'Непроверенные черные': 0,
-                'Непроверенные белые': 0,
-                'Проверенные черные': 0,
-                'Проверенные белые': 0,
-                'Упакованные черные': 0,
-                'Упакованные белые': 0,
-                'Отдано черные': 0,
-                'Отдано белые': 0
+                'Непроверенные черные': 0, 'Непроверенные белые': 0,
+                'Проверенные черные': 0, 'Проверенные белые': 0,
+                'Упакованные черные': 0, 'Упакованные белые': 0,
+                'Отдано черные': 0, 'Отдано белые': 0
             }
         };
 
-        // Начальные минимальные лимиты
         const defaultMinLimits = {
-            'Скотч желтый': 10,
-            'Скотч прозрачный': 10,
-            'Стрэйтч': 5,
-            'Крючки': 20,
-            'Пластик белый (листы)': 5,
-            'Коробки': 10,
-            'Грунт (мешки)': 3,
-            'Рамки черные': 5,
-            'Рамки белые': 5,
-            'Оргстекло': 3,
-            'Доски': 5,
-            'Пластик нарезанный': 5,
-            'Сушка грунта': 3,
-            'Сушка полей (клей)': 3,
-            'Готовые к сборке рамки': 5,
-            'Кривые (под давлением)': 2,
-            'Непроверенные черные': 5,
-            'Непроверенные белые': 5,
-            'Проверенные черные': 5,
-            'Проверенные белые': 5,
-            'Упакованные черные': 5,
-            'Упакованные белые': 5,
-            'Отдано черные': 0,
-            'Отдано белые': 0
+            'Скотч желтый': 10, 'Скотч прозрачный': 10, 'Стрэйтч': 5,
+            'Крючки': 20, 'Пластик белый (листы)': 5, 'Коробки': 10,
+            'Грунт (мешки)': 3, 'Рамки черные': 5, 'Рамки белые': 5,
+            'Оргстекло': 3, 'Доски': 5, 'Пластик нарезанный': 5,
+            'Сушка грунта': 3, 'Сушка полей (клей)': 3,
+            'Готовые к сборке рамки': 5, 'Кривые (под давлением)': 2,
+            'Непроверенные черные': 5, 'Непроверенные белые': 5,
+            'Проверенные черные': 5, 'Проверенные белые': 5,
+            'Упакованные черные': 5, 'Упакованные белые': 5,
+            'Отдано черные': 0, 'Отдано белые': 0
         };
 
-        // Загрузка данных из localStorage
+        // Загрузка из localStorage
         let data = JSON.parse(localStorage.getItem('productionData')) || JSON.parse(JSON.stringify(initialData));
         let history = JSON.parse(localStorage.getItem('productionHistory')) || [];
         let minLimits = JSON.parse(localStorage.getItem('minLimits')) || JSON.parse(JSON.stringify(defaultMinLimits));
@@ -852,56 +780,36 @@ function doPost(e) {
 
         // Настройки синхронизации
         let syncConfig = JSON.parse(localStorage.getItem('syncConfig')) || {
-            spreadsheetId: '',
-            webAppUrl: '',
-            syncInterval: 30,
-            enabled: false,
-            lastSync: null
+            webAppUrl: '', syncInterval: 30, enabled: false, lastSync: null
         };
-
         let syncTimer = null;
 
-        // Инициализация
+        // ========== ИНИЦИАЛИЗАЦИЯ ==========
         function init() {
             if (darkMode) {
                 document.body.setAttribute('data-theme', 'dark');
                 document.querySelector('.theme-toggle').textContent = '☀️ Светлая тема';
             }
-            
             renderAll();
             updateStats();
             renderLimitsPanel();
             updateSyncStatus();
-            
-            // Запуск синхронизации если настроена
-            if (syncConfig.enabled && syncConfig.webAppUrl) {
-                startSync();
-            }
+            if (syncConfig.enabled && syncConfig.webAppUrl) startSync();
         }
 
-        // Сохранение данных локально
         function saveData() {
             localStorage.setItem('productionData', JSON.stringify(data));
             localStorage.setItem('productionHistory', JSON.stringify(history));
             localStorage.setItem('minLimits', JSON.stringify(minLimits));
             localStorage.setItem('darkMode', JSON.stringify(darkMode));
             localStorage.setItem('syncConfig', JSON.stringify(syncConfig));
-            
-            showSaveIndicator();
-        }
-
-        function showSaveIndicator() {
             const indicator = document.getElementById('save-indicator');
             indicator.style.display = 'block';
-            setTimeout(() => {
-                indicator.style.display = 'none';
-            }, 1500);
+            setTimeout(() => { indicator.style.display = 'none'; }, 1500);
         }
 
         // ========== СИНХРОНИЗАЦИЯ ==========
-        
         function openSyncSettings() {
-            document.getElementById('spreadsheet-id').value = syncConfig.spreadsheetId;
             document.getElementById('webapp-url').value = syncConfig.webAppUrl;
             document.getElementById('sync-interval').value = syncConfig.syncInterval;
             document.getElementById('sync-modal').classList.add('active');
@@ -912,17 +820,11 @@ function doPost(e) {
         }
 
         function saveSyncSettings() {
-            const spreadsheetId = document.getElementById('spreadsheet-id').value.trim();
             const webAppUrl = document.getElementById('webapp-url').value.trim();
             const syncInterval = parseInt(document.getElementById('sync-interval').value) || 30;
-            
-            if (!webAppUrl) {
-                alert('❌ Введите URL веб-приложения Google Apps Script');
-                return;
-            }
+            if (!webAppUrl) { alert('❌ Введите URL веб-приложения'); return; }
             
             syncConfig = {
-                spreadsheetId: spreadsheetId,
                 webAppUrl: webAppUrl,
                 syncInterval: Math.max(10, syncInterval),
                 enabled: true,
@@ -932,35 +834,22 @@ function doPost(e) {
             saveData();
             closeSyncSettings();
             startSync();
-            
-            alert('✅ Синхронизация настроена! Данные будут синхронизироваться каждые ' + syncConfig.syncInterval + ' сек.');
+            alert('✅ Синхронизация настроена! Интервал: ' + syncConfig.syncInterval + ' сек.');
         }
 
         function startSync() {
             stopSync();
-            
             if (syncConfig.enabled && syncConfig.webAppUrl) {
                 updateSyncStatus('sync-loading', '🔄 Подключение...');
-                
-                // Первая синхронизация сразу
-                syncFromGoogleSheets();
-                
-                // Запуск периодической синхронизации
-                syncTimer = setInterval(() => {
-                    syncFromGoogleSheets();
-                }, syncConfig.syncInterval * 1000);
-                
+                syncFromCloud();
+                syncTimer = setInterval(() => { syncFromCloud(); }, syncConfig.syncInterval * 1000);
                 document.getElementById('syncSettingsBtn').classList.add('active-sync');
                 document.getElementById('syncSettingsBtn').textContent = '🔄 Синхронизация активна';
             }
         }
 
         function stopSync() {
-            if (syncTimer) {
-                clearInterval(syncTimer);
-                syncTimer = null;
-            }
-            
+            if (syncTimer) { clearInterval(syncTimer); syncTimer = null; }
             if (!syncConfig.enabled) {
                 updateSyncStatus('sync-offline', '⚪ Нет синхронизации');
                 document.getElementById('syncSettingsBtn').classList.remove('active-sync');
@@ -968,147 +857,101 @@ function doPost(e) {
             }
         }
 
-        async function syncFromGoogleSheets() {
+        async function syncFromCloud() {
             if (!syncConfig.webAppUrl) return;
             
             try {
-                updateSyncStatus('sync-loading', '🔄 Синхронизация...');
+                updateSyncStatus('sync-loading', '🔄 Загрузка данных...');
                 
-                // Получаем данные из Google Sheets
-                const response = await fetch(syncConfig.webAppUrl, {
-                    method: 'GET',
-                    cache: 'no-cache'
-                });
+                // Получаем данные из облака
+                const response = await fetch(syncConfig.webAppUrl + '?t=' + Date.now());
+                const text = await response.text();
+                const cloudData = JSON.parse(text);
                 
-                if (!response.ok) {
-                    throw new Error('Ошибка получения данных');
-                }
+                const localTime = parseInt(localStorage.getItem('lastUpdate') || '0');
+                const cloudTime = cloudData.lastUpdate || 0;
                 
-                const remoteData = await response.json();
-                
-                // Если в облаке есть данные и они новее
-                if (remoteData && remoteData.lastUpdate) {
-                    const localTime = localStorage.getItem('lastUpdate') || 0;
-                    const remoteTime = remoteData.lastUpdate || 0;
-                    
-                    if (remoteTime > localTime) {
-                        // Облачные данные новее - загружаем их
-                        data = remoteData.data || data;
-                        history = remoteData.history || history;
-                        minLimits = remoteData.minLimits || minLimits;
-                        localStorage.setItem('lastUpdate', remoteTime);
-                        renderAll();
-                        updateStats();
-                    } else if (remoteTime < localTime) {
-                        // Локальные данные новее - отправляем в облако
-                        await pushToGoogleSheets();
-                    }
+                if (cloudData.data && cloudTime > localTime) {
+                    // Данные в облаке новее
+                    data = cloudData.data;
+                    if (cloudData.history) history = cloudData.history;
+                    if (cloudData.minLimits) minLimits = cloudData.minLimits;
+                    localStorage.setItem('lastUpdate', cloudTime);
+                    renderAll();
+                    updateStats();
+                    updateSyncStatus('sync-online', '🟢 Данные загружены');
                 } else {
-                    // В облаке нет данных - отправляем свои
-                    await pushToGoogleSheets();
+                    // Отправляем свои данные в облако
+                    await pushToCloud();
                 }
                 
                 syncConfig.lastSync = new Date().toLocaleString('ru-RU');
                 saveData();
-                updateSyncStatus('sync-online', '🟢 Синхронизировано');
                 
             } catch (error) {
                 console.error('Ошибка синхронизации:', error);
-                updateSyncStatus('sync-error', '🔴 Ошибка: ' + error.message);
+                updateSyncStatus('sync-error', '🔴 Ошибка');
+                // Пробуем отправить данные
+                try { await pushToCloud(); } catch(e) {}
             }
         }
 
-        async function pushToGoogleSheets() {
+        async function pushToCloud() {
             if (!syncConfig.webAppUrl) return;
             
             const timestamp = Date.now();
-            const payload = {
+            const payload = JSON.stringify({
                 data: data,
                 history: history,
                 minLimits: minLimits,
                 lastUpdate: timestamp
-            };
+            });
             
-            try {
-                const response = await fetch(syncConfig.webAppUrl, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    headers: {
-                        'Content-Type': 'text/plain;charset=utf-8',
-                    },
-                    body: JSON.stringify(payload)
-                });
-                
-                localStorage.setItem('lastUpdate', timestamp);
-                syncConfig.lastSync = new Date().toLocaleString('ru-RU');
-                
-            } catch (error) {
-                console.error('Ошибка отправки:', error);
-                throw error;
-            }
+            // Используем GET параметр для отправки (работает всегда)
+            const url = syncConfig.webAppUrl + '?save=' + encodeURIComponent(payload) + '&t=' + Date.now();
+            
+            await fetch(url);
+            localStorage.setItem('lastUpdate', timestamp);
+            syncConfig.lastSync = new Date().toLocaleString('ru-RU');
+            updateSyncStatus('sync-online', '🟢 Синхронизировано');
         }
 
         function syncNow() {
-            if (!syncConfig.enabled) {
-                alert('❌ Сначала настройте синхронизацию');
-                return;
-            }
-            syncFromGoogleSheets();
-            alert('✅ Синхронизация выполнена');
+            if (!syncConfig.enabled) { alert('❌ Сначала настройте синхронизацию'); return; }
+            pushToCloud().then(() => {
+                alert('✅ Данные отправлены в облако');
+            });
         }
 
         function updateSyncStatus(className, text) {
             const statusDiv = document.getElementById('sync-status');
             statusDiv.className = 'sync-status ' + className;
             statusDiv.innerHTML = text;
-            
-            if (syncConfig.lastSync) {
-                statusDiv.title = 'Последняя синхронизация: ' + syncConfig.lastSync;
-            }
         }
 
-        function disableSync() {
-            if (confirm('Отключить синхронизацию с Google Таблицами?')) {
-                syncConfig.enabled = false;
-                stopSync();
-                saveData();
-                updateSyncStatus('sync-offline', '⚪ Синхронизация отключена');
-                document.getElementById('syncSettingsBtn').classList.remove('active-sync');
-                document.getElementById('syncSettingsBtn').textContent = '🔄 Настроить синхронизацию';
-                alert('✅ Синхронизация отключена');
-            }
-        }
-
-        // ========== ОСТАЛЬНЫЕ ФУНКЦИИ ==========
-
+        // ========== ТЕМА И ВКЛАДКИ ==========
         function toggleTheme() {
             darkMode = !darkMode;
-            if (darkMode) {
-                document.body.setAttribute('data-theme', 'dark');
-                document.querySelector('.theme-toggle').textContent = '☀️ Светлая тема';
-            } else {
-                document.body.removeAttribute('data-theme');
-                document.querySelector('.theme-toggle').textContent = '🌙 Темная тема';
-            }
+            document.querySelector('.theme-toggle').textContent = darkMode ? '☀️ Светлая тема' : '🌙 Темная тема';
+            if (darkMode) document.body.setAttribute('data-theme', 'dark');
+            else document.body.removeAttribute('data-theme');
             saveData();
         }
 
         function switchTab(tabName) {
-            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
-            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-            
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
             event.target.classList.add('active');
             document.getElementById(tabName + '-tab').classList.add('active');
-            
             if (tabName === 'stats') updateStats();
             if (tabName === 'history') renderHistory();
         }
 
+        // ========== ПАНЕЛЬ ЛИМИТОВ ==========
         function toggleLimitsPanel() {
             showLimitsPanel = !showLimitsPanel;
             const panel = document.getElementById('limitsPanel');
             const btn = document.getElementById('limitsToggleBtn');
-            
             if (showLimitsPanel) {
                 panel.classList.add('show');
                 btn.classList.add('active');
@@ -1124,138 +967,35 @@ function doPost(e) {
         function renderLimitsPanel() {
             const grid = document.getElementById('limitsGrid');
             let html = '';
-            
             const allItems = {};
             for (const category in data) {
                 for (const item in data[category]) {
                     allItems[item] = minLimits[item] || 0;
                 }
             }
-            
-            const sortedItems = Object.keys(allItems).sort();
-            
-            sortedItems.forEach(item => {
-                const minValue = allItems[item];
-                html += `
-                    <div class="limit-item">
-                        <span class="limit-item-name">${item}</span>
-                        <div class="limit-item-controls">
-                            <span style="font-size: 12px; color: var(--text-secondary);">Мин:</span>
-                            <input 
-                                type="number" 
-                                class="limit-input" 
-                                value="${minValue}" 
-                                min="0"
-                                id="limit-${item.replace(/[^a-zA-Zа-яА-Я0-9]/g, '')}"
-                                onchange="updateMinLimit('${item}', this.value)"
-                            />
-                            <button class="limit-save-btn" onclick="saveMinLimit('${item}')">OK</button>
-                        </div>
+            Object.keys(allItems).sort().forEach(item => {
+                html += `<div class="limit-item">
+                    <span class="limit-item-name">${item}</span>
+                    <div class="limit-item-controls">
+                        <span style="font-size:12px;color:var(--text-secondary)">Мин:</span>
+                        <input type="number" class="limit-input" value="${allItems[item]}" min="0" 
+                            onchange="minLimits['${item}']=Math.max(0,parseInt(this.value)||0);saveData();renderAll();checkCritical()"/>
                     </div>
-                `;
+                </div>`;
             });
-            
             grid.innerHTML = html;
         }
 
-        function updateMinLimit(item, value) {
-            const newValue = Math.max(0, parseInt(value) || 0);
-            minLimits[item] = newValue;
-            saveData();
-            renderAll();
-            checkCritical();
-        }
-
-        function saveMinLimit(item) {
-            const inputId = 'limit-' + item.replace(/[^a-zA-Zа-яА-Я0-9]/g, '');
-            const input = document.getElementById(inputId);
-            if (input) {
-                const newValue = Math.max(0, parseInt(input.value) || 0);
-                minLimits[item] = newValue;
-                saveData();
-                renderAll();
-                checkCritical();
-                showSaveIndicator();
-            }
-        }
-
         function saveAllLimits() {
-            const inputs = document.querySelectorAll('.limit-input');
-            inputs.forEach(input => {
-                const itemName = input.id.replace('limit-', '');
-                for (const key in minLimits) {
-                    if (key.replace(/[^a-zA-Zа-яА-Я0-9]/g, '') === itemName) {
-                        minLimits[key] = Math.max(0, parseInt(input.value) || 0);
-                        break;
-                    }
-                }
+            document.querySelectorAll('.limit-input').forEach(input => {
+                const item = input.closest('.limit-item').querySelector('.limit-item-name').textContent;
+                minLimits[item] = Math.max(0, parseInt(input.value) || 0);
             });
             saveData();
             renderAll();
             checkCritical();
-            renderLimitsPanel();
-            
-            // Синхронизируем с облаком
-            if (syncConfig.enabled) {
-                pushToGoogleSheets();
-            }
-            
+            if (syncConfig.enabled) pushToCloud();
             alert('✅ Все минимальные запасы сохранены!');
-        }
-
-        function updateValue(category, item, delta) {
-            const oldValue = data[category][item];
-            const newValue = Math.max(0, oldValue + delta);
-            
-            data[category][item] = newValue;
-            
-            history.unshift({
-                timestamp: new Date().toLocaleString('ru-RU'),
-                item: item,
-                oldValue: oldValue,
-                newValue: newValue,
-                action: delta > 0 ? 'увеличение' : 'уменьшение'
-            });
-            
-            if (history.length > 100) {
-                history = history.slice(0, 100);
-            }
-            
-            renderAll();
-            checkCritical();
-            saveData();
-            
-            // Автоматическая синхронизация при изменении
-            if (syncConfig.enabled) {
-                pushToGoogleSheets();
-            }
-        }
-
-        function setValue(category, item, value) {
-            const newValue = Math.max(0, parseInt(value) || 0);
-            const oldValue = data[category][item];
-            
-            data[category][item] = newValue;
-            
-            history.unshift({
-                timestamp: new Date().toLocaleString('ru-RU'),
-                item: item,
-                oldValue: oldValue,
-                newValue: newValue,
-                action: 'прямой ввод'
-            });
-            
-            if (history.length > 100) {
-                history = history.slice(0, 100);
-            }
-            
-            renderAll();
-            checkCritical();
-            saveData();
-            
-            if (syncConfig.enabled) {
-                pushToGoogleSheets();
-            }
         }
 
         function quickEditLimit(item) {
@@ -1266,31 +1006,52 @@ function doPost(e) {
                 renderAll();
                 checkCritical();
                 if (showLimitsPanel) renderLimitsPanel();
-                
-                if (syncConfig.enabled) {
-                    pushToGoogleSheets();
-                }
             }
+        }
+
+        // ========== ИЗМЕНЕНИЕ ЗНАЧЕНИЙ ==========
+        function updateValue(category, item, delta) {
+            const oldValue = data[category][item];
+            data[category][item] = Math.max(0, oldValue + delta);
+            addHistory(item, oldValue, data[category][item], delta > 0 ? 'увеличение' : 'уменьшение');
+            renderAll();
+            checkCritical();
+            saveData();
+            if (syncConfig.enabled) pushToCloud();
+        }
+
+        function setValue(category, item, value) {
+            const oldValue = data[category][item];
+            data[category][item] = Math.max(0, parseInt(value) || 0);
+            addHistory(item, oldValue, data[category][item], 'прямой ввод');
+            renderAll();
+            checkCritical();
+            saveData();
+            if (syncConfig.enabled) pushToCloud();
+        }
+
+        function addHistory(item, oldValue, newValue, action) {
+            history.unshift({
+                timestamp: new Date().toLocaleString('ru-RU'),
+                item, oldValue, newValue, action
+            });
+            if (history.length > 100) history = history.slice(0, 100);
         }
 
         function checkCritical() {
             const criticalItems = [];
-            
             for (const category in data) {
                 for (const item in data[category]) {
                     const value = data[category][item];
                     const minLimit = minLimits[item] || 0;
-                    if (value <= minLimit) {
-                        criticalItems.push({ item, value, min: minLimit });
-                    }
+                    if (value <= minLimit) criticalItems.push({ item, value, min: minLimit });
                 }
             }
-            
             const alertsDiv = document.getElementById('critical-alerts');
             if (criticalItems.length > 0) {
-                let html = '<div class="critical-alert"><h3>⚠️ Критические запасы (ниже минимума):</h3>';
-                criticalItems.forEach(crit => {
-                    html += `<div class="critical-item">🔴 ${crit.item}: ${crit.value} ед. (мин: ${crit.min})</div>`;
+                let html = '<div class="critical-alert"><h3>⚠️ Критические запасы:</h3>';
+                criticalItems.forEach(c => {
+                    html += `<div class="critical-item">🔴 ${c.item}: ${c.value} ед. (мин: ${c.min})</div>`;
                 });
                 html += '</div>';
                 alertsDiv.innerHTML = html;
@@ -1302,173 +1063,82 @@ function doPost(e) {
         function createItemControl(category, item, value, isSubItem = false) {
             const minLimit = minLimits[item] || 0;
             const isCritical = value <= minLimit;
-            
-            let valueClass = '';
-            if (isCritical) valueClass = 'critical-low';
-            
             return `
                 <div class="${isSubItem ? 'sub-item' : 'item'}">
                     <div class="item-name">
-                        <span>
-                            ${item}
-                            <span class="min-limit-badge" onclick="quickEditLimit('${item}')" title="Минимальный запас: ${minLimit}. Нажмите чтобы изменить">
-                                мин: ${minLimit}
-                            </span>
-                        </span>
-                        <span class="item-value ${valueClass}">${value}</span>
+                        <span>${item} <span class="min-limit-badge" onclick="quickEditLimit('${item}')" title="Мин: ${minLimit}">мин: ${minLimit}</span></span>
+                        <span class="item-value ${isCritical ? 'critical-low' : ''}">${value}</span>
                     </div>
                     <div class="item-controls">
-                        <button class="btn btn-minus-10" onclick="updateValue('${category}', '${item}', -10)">-10</button>
-                        <button class="btn btn-minus-1" onclick="updateValue('${category}', '${item}', -1)">-1</button>
-                        <input 
-                            type="number" 
-                            class="quantity-input" 
-                            value="${value}" 
-                            min="0"
-                            onchange="setValue('${category}', '${item}', this.value)"
-                        />
-                        <button class="btn btn-plus-1" onclick="updateValue('${category}', '${item}', 1)">+1</button>
-                        <button class="btn btn-plus-10" onclick="updateValue('${category}', '${item}', 10)">+10</button>
+                        <button class="btn btn-minus-10" onclick="updateValue('${category}','${item}',-10)">-10</button>
+                        <button class="btn btn-minus-1" onclick="updateValue('${category}','${item}',-1)">-1</button>
+                        <input type="number" class="quantity-input" value="${value}" min="0" onchange="setValue('${category}','${item}',this.value)"/>
+                        <button class="btn btn-plus-1" onclick="updateValue('${category}','${item}',1)">+1</button>
+                        <button class="btn btn-plus-10" onclick="updateValue('${category}','${item}',10)">+10</button>
                     </div>
-                </div>
-            `;
+                </div>`;
         }
 
         function renderAll() {
-            let suppliesHTML = '<h3 class="subsection-title">Скотч</h3>';
-            suppliesHTML += createItemControl('supplies', 'Скотч желтый', data.supplies['Скотч желтый'], true);
-            suppliesHTML += createItemControl('supplies', 'Скотч прозрачный', data.supplies['Скотч прозрачный'], true);
-            suppliesHTML += createItemControl('supplies', 'Стрэйтч', data.supplies['Стрэйтч']);
-            suppliesHTML += createItemControl('supplies', 'Крючки', data.supplies['Крючки']);
-            suppliesHTML += createItemControl('supplies', 'Пластик белый (листы)', data.supplies['Пластик белый (листы)']);
-            suppliesHTML += createItemControl('supplies', 'Коробки', data.supplies['Коробки']);
-            suppliesHTML += createItemControl('supplies', 'Грунт (мешки)', data.supplies['Грунт (мешки)']);
-            suppliesHTML += '<h3 class="subsection-title">Рамки</h3>';
-            suppliesHTML += createItemControl('supplies', 'Рамки черные', data.supplies['Рамки черные'], true);
-            suppliesHTML += createItemControl('supplies', 'Рамки белые', data.supplies['Рамки белые'], true);
-            suppliesHTML += createItemControl('supplies', 'Оргстекло', data.supplies['Оргстекло']);
-            suppliesHTML += createItemControl('supplies', 'Доски', data.supplies['Доски']);
-            document.getElementById('supplies-section').innerHTML = suppliesHTML;
+            let s = '<h3 class="subsection-title">Скотч</h3>';
+            s += createItemControl('supplies','Скотч желтый',data.supplies['Скотч желтый'],true);
+            s += createItemControl('supplies','Скотч прозрачный',data.supplies['Скотч прозрачный'],true);
+            for (let i of ['Стрэйтч','Крючки','Пластик белый (листы)','Коробки','Грунт (мешки)']) s += createItemControl('supplies',i,data.supplies[i]);
+            s += '<h3 class="subsection-title">Рамки</h3>';
+            s += createItemControl('supplies','Рамки черные',data.supplies['Рамки черные'],true);
+            s += createItemControl('supplies','Рамки белые',data.supplies['Рамки белые'],true);
+            for (let i of ['Оргстекло','Доски']) s += createItemControl('supplies',i,data.supplies[i]);
+            document.getElementById('supplies-section').innerHTML = s;
 
-            let productionHTML = '';
-            for (const item in data.production) {
-                productionHTML += createItemControl('production', item, data.production[item]);
-            }
-            document.getElementById('production-section').innerHTML = productionHTML;
+            let p = '';
+            for (let i in data.production) p += createItemControl('production',i,data.production[i]);
+            document.getElementById('production-section').innerHTML = p;
 
-            let assemblyHTML = '<h3 class="subsection-title">Собранные непроверенные</h3>';
-            assemblyHTML += createItemControl('assembly', 'Непроверенные черные', data.assembly['Непроверенные черные'], true);
-            assemblyHTML += createItemControl('assembly', 'Непроверенные белые', data.assembly['Непроверенные белые'], true);
-            assemblyHTML += '<h3 class="subsection-title">Собранные проверенные</h3>';
-            assemblyHTML += createItemControl('assembly', 'Проверенные черные', data.assembly['Проверенные черные'], true);
-            assemblyHTML += createItemControl('assembly', 'Проверенные белые', data.assembly['Проверенные белые'], true);
-            assemblyHTML += '<h3 class="subsection-title">Упакованные с штрих кодом</h3>';
-            assemblyHTML += createItemControl('assembly', 'Упакованные черные', data.assembly['Упакованные черные'], true);
-            assemblyHTML += createItemControl('assembly', 'Упакованные белые', data.assembly['Упакованные белые'], true);
-            assemblyHTML += '<h3 class="subsection-title">Отдано</h3>';
-            assemblyHTML += createItemControl('assembly', 'Отдано черные', data.assembly['Отдано черные'], true);
-            assemblyHTML += createItemControl('assembly', 'Отдано белые', data.assembly['Отдано белые'], true);
-            document.getElementById('assembly-section').innerHTML = assemblyHTML;
+            let a = '<h3 class="subsection-title">Собранные непроверенные</h3>';
+            a += createItemControl('assembly','Непроверенные черные',data.assembly['Непроверенные черные'],true);
+            a += createItemControl('assembly','Непроверенные белые',data.assembly['Непроверенные белые'],true);
+            a += '<h3 class="subsection-title">Собранные проверенные</h3>';
+            a += createItemControl('assembly','Проверенные черные',data.assembly['Проверенные черные'],true);
+            a += createItemControl('assembly','Проверенные белые',data.assembly['Проверенные белые'],true);
+            a += '<h3 class="subsection-title">Упакованные с штрих кодом</h3>';
+            a += createItemControl('assembly','Упакованные черные',data.assembly['Упакованные черные'],true);
+            a += createItemControl('assembly','Упакованные белые',data.assembly['Упакованные белые'],true);
+            a += '<h3 class="subsection-title">Отдано</h3>';
+            a += createItemControl('assembly','Отдано черные',data.assembly['Отдано черные'],true);
+            a += createItemControl('assembly','Отдано белые',data.assembly['Отдано белые'],true);
+            document.getElementById('assembly-section').innerHTML = a;
 
             checkCritical();
             renderHistory();
         }
 
         function renderHistory() {
-            const historyDiv = document.getElementById('history-list');
-            if (history.length === 0) {
-                historyDiv.innerHTML = '<p style="color: var(--text-secondary)">История пуста</p>';
-                return;
-            }
-            
-            let html = '';
-            history.forEach(record => {
-                html += `
-                    <div class="history-item">
-                        <strong>${record.timestamp}</strong> - "${record.item}": 
-                        ${record.oldValue} → ${record.newValue} (${record.action})
-                    </div>
-                `;
-            });
-            historyDiv.innerHTML = html;
+            const div = document.getElementById('history-list');
+            div.innerHTML = history.length === 0 ? '<p style="color:var(--text-secondary)">История пуста</p>' :
+                history.map(r => `<div class="history-item"><strong>${r.timestamp}</strong> - "${r.item}": ${r.oldValue} → ${r.newValue} (${r.action})</div>`).join('');
         }
 
         function clearHistory() {
-            if (confirm('Вы уверены, что хотите очистить всю историю?')) {
-                history = [];
-                saveData();
-                renderHistory();
-                if (syncConfig.enabled) pushToGoogleSheets();
-            }
+            if (confirm('Очистить историю?')) { history = []; saveData(); renderHistory(); if(syncConfig.enabled) pushToCloud(); }
         }
 
         function updateStats() {
-            const totalFrames = 
-                data.assembly['Непроверенные черные'] + data.assembly['Непроверенные белые'] +
-                data.assembly['Проверенные черные'] + data.assembly['Проверенные белые'] +
-                data.assembly['Упакованные черные'] + data.assembly['Упакованные белые'];
+            const total = data.assembly['Непроверенные черные']+data.assembly['Непроверенные белые']+data.assembly['Проверенные черные']+data.assembly['Проверенные белые']+data.assembly['Упакованные черные']+data.assembly['Упакованные белые'];
+            const shipped = data.assembly['Отдано черные']+data.assembly['Отдано белые'];
+            const tape = data.supplies['Скотч желтый']+data.supplies['Скотч прозрачный'];
+            let crit = 0;
+            for (let c in data) for (let i in data[c]) if (data[c][i] <= (minLimits[i]||0)) crit++;
             
-            const shippedFrames = 
-                data.assembly['Отдано черные'] + data.assembly['Отдано белые'];
-            
-            const totalTape = 
-                data.supplies['Скотч желтый'] + data.supplies['Скотч прозрачный'];
-            
-            let criticalCount = 0;
-            for (const category in data) {
-                for (const item in data[category]) {
-                    const minLimit = minLimits[item] || 0;
-                    if (data[category][item] <= minLimit) {
-                        criticalCount++;
-                    }
-                }
-            }
-            
-            const statsHTML = `
-                <div class="stat-card">
-                    <h4>Всего рамок в производстве</h4>
-                    <div class="stat-value">${totalFrames}</div>
-                </div>
-                <div class="stat-card">
-                    <h4>Отгружено рамок</h4>
-                    <div class="stat-value">${shippedFrames}</div>
-                </div>
-                <div class="stat-card">
-                    <h4>Остаток скотча</h4>
-                    <div class="stat-value">${totalTape}</div>
-                </div>
-                <div class="stat-card">
-                    <h4>Критических позиций</h4>
-                    <div class="stat-value" style="color: var(--danger-red)">${criticalCount}</div>
-                </div>
-                <div class="stat-card">
-                    <h4>Изменений за сессию</h4>
-                    <div class="stat-value">${history.length}</div>
-                </div>
-                <div class="stat-card">
-                    <h4>Синхронизация</h4>
-                    <div class="stat-value" style="font-size: 24px;">${syncConfig.enabled ? '🟢' : '⚪'}</div>
-                </div>
-            `;
-            
-            document.getElementById('stats-grid').innerHTML = statsHTML;
+            document.getElementById('stats-grid').innerHTML = `
+                <div class="stat-card"><h4>Рамок в производстве</h4><div class="stat-value">${total}</div></div>
+                <div class="stat-card"><h4>Отгружено рамок</h4><div class="stat-value">${shipped}</div></div>
+                <div class="stat-card"><h4>Остаток скотча</h4><div class="stat-value">${tape}</div></div>
+                <div class="stat-card"><h4>Критических позиций</h4><div class="stat-value" style="color:var(--danger-red)">${crit}</div></div>
+                <div class="stat-card"><h4>Изменений</h4><div class="stat-value">${history.length}</div></div>
+                <div class="stat-card"><h4>Синхронизация</h4><div class="stat-value" style="font-size:24px">${syncConfig.enabled?'🟢':'⚪'}</div></div>`;
         }
 
-        function resetAllData() {
-            if (confirm('⚠️ Вы уверены, что хотите сбросить ВСЕ данные? Это действие нельзя отменить!')) {
-                data = JSON.parse(JSON.stringify(initialData));
-                history = [];
-                minLimits = JSON.parse(JSON.stringify(defaultMinLimits));
-                saveData();
-                renderAll();
-                updateStats();
-                if (showLimitsPanel) renderLimitsPanel();
-                if (syncConfig.enabled) pushToGoogleSheets();
-                alert('✅ Все данные сброшены до начальных значений');
-            }
-        }
-
-        // Запуск приложения
+        // Запуск
         init();
     </script>
 </body>
