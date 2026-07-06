@@ -80,7 +80,58 @@
             flex-wrap: wrap;
         }
 
-        .theme-toggle, .config-btn, .limits-btn {
+        .sync-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .sync-online {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .sync-offline {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .sync-error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .sync-loading {
+            background: #cce5ff;
+            color: #004085;
+        }
+
+        [data-theme="dark"] .sync-online {
+            background: #1e3a2f;
+            color: #66bb6a;
+        }
+
+        [data-theme="dark"] .sync-offline {
+            background: #3d3520;
+            color: #ffd54f;
+        }
+
+        [data-theme="dark"] .sync-error {
+            background: #3d2020;
+            color: #ef5350;
+        }
+
+        [data-theme="dark"] .sync-loading {
+            background: #1a2a3d;
+            color: #66b0ff;
+        }
+
+        .theme-toggle, .config-btn, .limits-btn, .sync-btn {
             padding: 10px 20px;
             border: 2px solid var(--border-color);
             border-radius: 8px;
@@ -92,7 +143,7 @@
             white-space: nowrap;
         }
 
-        .theme-toggle:hover, .config-btn:hover, .limits-btn:hover {
+        .theme-toggle:hover, .config-btn:hover, .limits-btn:hover, .sync-btn:hover {
             background: var(--hover-bg);
         }
 
@@ -100,6 +151,19 @@
             background: var(--accent-green);
             color: white;
             border-color: var(--accent-green);
+        }
+
+        .sync-btn.active-sync {
+            background: #007bff;
+            color: white;
+            border-color: #007bff;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
         }
 
         .sections-container {
@@ -165,12 +229,6 @@
             gap: 10px;
         }
 
-        .item-value-container {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
         .item-value {
             font-size: 18px;
             font-weight: bold;
@@ -179,12 +237,6 @@
         .critical-low {
             color: var(--danger-red);
             animation: pulse 2s infinite;
-        }
-
-        @keyframes pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.5; }
-            100% { opacity: 1; }
         }
 
         .min-limit-badge {
@@ -200,56 +252,6 @@
         .min-limit-badge:hover {
             background: var(--accent-green);
             color: white;
-        }
-
-        .edit-min-limit {
-            display: none;
-            position: absolute;
-            top: 5px;
-            right: 5px;
-            background: var(--card-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            padding: 8px;
-            z-index: 10;
-            box-shadow: var(--shadow);
-        }
-
-        .edit-min-limit.show {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-        }
-
-        .edit-min-input {
-            width: 60px;
-            padding: 5px;
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
-            text-align: center;
-            font-size: 14px;
-            background: var(--bg-primary);
-            color: var(--text-primary);
-        }
-
-        .edit-min-save {
-            padding: 5px 10px;
-            background: var(--accent-green);
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 12px;
-        }
-
-        .edit-min-close {
-            padding: 5px 10px;
-            background: #95a5a6;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 12px;
         }
 
         .item-controls {
@@ -510,13 +512,20 @@
             padding: 30px;
             border: 2px solid var(--border-color);
             box-shadow: var(--shadow);
-            max-width: 500px;
+            max-width: 600px;
             width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
         }
 
         .modal-content h2 {
             color: var(--accent-green);
             margin-bottom: 20px;
+        }
+
+        .modal-content h3 {
+            color: var(--text-primary);
+            margin: 15px 0 10px 0;
         }
 
         .modal-input {
@@ -560,6 +569,23 @@
             border-radius: 8px;
             cursor: pointer;
             font-size: 16px;
+        }
+
+        .help-text {
+            background: var(--bg-secondary);
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            font-size: 14px;
+            color: var(--text-secondary);
+            border-left: 4px solid #007bff;
+        }
+
+        .help-text code {
+            background: var(--card-bg);
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 13px;
         }
 
         .save-indicator {
@@ -622,11 +648,16 @@
         <header class="header">
             <h1>🏭 Система управления производством</h1>
             <div class="header-controls">
+                <div class="sync-status sync-offline" id="sync-status">
+                    <span>⚪</span> Нет синхронизации
+                </div>
+                <button class="sync-btn" onclick="openSyncSettings()" id="syncSettingsBtn">
+                    🔄 Настроить синхронизацию
+                </button>
                 <button class="limits-btn" onclick="toggleLimitsPanel()" id="limitsToggleBtn">
                     ⚙️ Мин. запасы
                 </button>
                 <button class="theme-toggle" onclick="toggleTheme()">🌙 Темная тема</button>
-                <button class="config-btn" onclick="resetAllData()">🔄 Сброс данных</button>
             </div>
         </header>
 
@@ -672,8 +703,9 @@
         <div id="history-tab" class="tab-content">
             <div class="history-section">
                 <h2 class="section-title">📋 История изменений</h2>
-                <div style="margin-bottom: 15px;">
-                    <button class="btn btn-minus-10" onclick="clearHistory()" style="background: #e74c3c;">🗑️ Очистить историю</button>
+                <div style="margin-bottom: 15px; display: flex; gap: 10px; flex-wrap: wrap;">
+                    <button class="btn" style="background: #e74c3c;" onclick="clearHistory()">🗑️ Очистить историю</button>
+                    <button class="btn" style="background: #007bff;" onclick="syncNow()">🔄 Синхронизировать сейчас</button>
                 </div>
                 <div class="history-list" id="history-list"></div>
             </div>
@@ -683,6 +715,65 @@
             <div class="stats-section">
                 <h2 class="section-title">📊 Общая статистика</h2>
                 <div class="stats-grid" id="stats-grid"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно настройки синхронизации -->
+    <div class="modal" id="sync-modal">
+        <div class="modal-content">
+            <h2>🔄 Настройка синхронизации с Google Таблицами</h2>
+            
+            <div class="help-text">
+                <h3>📋 Инструкция по настройке:</h3>
+                <ol style="padding-left: 20px; line-height: 1.8;">
+                    <li>Создайте новую Google Таблицу</li>
+                    <li>Скопируйте её ID из адресной строки:<br>
+                        <code>https://docs.google.com/spreadsheets/d/<b>ВОТ_ЭТОТ_ID</b>/edit</code>
+                    </li>
+                    <li>Вставьте ID в поле ниже</li>
+                    <li>Откройте: <b>Расширения → Apps Script</b></li>
+                    <li>Вставьте код скрипта (показан ниже)</li>
+                    <li>Нажмите: <b>Развернуть → Новое развертывание → Веб-приложение</b></li>
+                    <li>Установите доступ: <b>"Все, включая анонимных пользователей"</b></li>
+                    <li>Скопируйте URL веб-приложения и вставьте его в поле ниже</li>
+                </ol>
+            </div>
+
+            <label>ID Google Таблицы:</label>
+            <input type="text" class="modal-input" id="spreadsheet-id" placeholder="1ABC123...">
+            
+            <label>URL веб-приложения (Apps Script):</label>
+            <input type="text" class="modal-input" id="webapp-url" placeholder="https://script.google.com/macros/s/...">
+            
+            <label>Интервал синхронизации (секунды):</label>
+            <input type="number" class="modal-input" id="sync-interval" value="30" min="10" max="3600">
+            
+            <div class="help-text">
+                <h3>📝 Код для Google Apps Script:</h3>
+                <textarea readonly style="width: 100%; height: 200px; font-family: monospace; font-size: 12px; padding: 10px; border-radius: 5px; background: var(--bg-primary); color: var(--text-primary); border: 1px solid var(--border-color);">
+function doGet(e) {
+  const sheet = SpreadsheetApp.openById('ВАШ_ID_ТАБЛИЦЫ').getActiveSheet();
+  const data = sheet.getRange(1, 1).getValue();
+  return ContentService.createTextOutput(data || '{}')
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function doPost(e) {
+  const sheet = SpreadsheetApp.openById('ВАШ_ID_ТАБЛИЦЫ').getActiveSheet();
+  const data = e.postData.contents;
+  sheet.clear();
+  sheet.getRange(1, 1).setValue(data);
+  return ContentService.createTextOutput(JSON.stringify({success: true}))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+                </textarea>
+                <p style="margin-top: 10px;"><b>Важно:</b> Замените <code>ВАШ_ID_ТАБЛИЦЫ</code> на реальный ID вашей таблицы</p>
+            </div>
+            
+            <div class="modal-buttons">
+                <button class="cancel-btn" onclick="closeSyncSettings()">Отмена</button>
+                <button class="save-btn" onclick="saveSyncSettings()">💾 Сохранить и подключить</button>
             </div>
         </div>
     </div>
@@ -759,6 +850,17 @@
         let darkMode = JSON.parse(localStorage.getItem('darkMode')) || false;
         let showLimitsPanel = false;
 
+        // Настройки синхронизации
+        let syncConfig = JSON.parse(localStorage.getItem('syncConfig')) || {
+            spreadsheetId: '',
+            webAppUrl: '',
+            syncInterval: 30,
+            enabled: false,
+            lastSync: null
+        };
+
+        let syncTimer = null;
+
         // Инициализация
         function init() {
             if (darkMode) {
@@ -769,14 +871,21 @@
             renderAll();
             updateStats();
             renderLimitsPanel();
+            updateSyncStatus();
+            
+            // Запуск синхронизации если настроена
+            if (syncConfig.enabled && syncConfig.webAppUrl) {
+                startSync();
+            }
         }
 
-        // Сохранение данных
+        // Сохранение данных локально
         function saveData() {
             localStorage.setItem('productionData', JSON.stringify(data));
             localStorage.setItem('productionHistory', JSON.stringify(history));
             localStorage.setItem('minLimits', JSON.stringify(minLimits));
             localStorage.setItem('darkMode', JSON.stringify(darkMode));
+            localStorage.setItem('syncConfig', JSON.stringify(syncConfig));
             
             showSaveIndicator();
         }
@@ -789,7 +898,189 @@
             }, 1500);
         }
 
-        // Переключение темы
+        // ========== СИНХРОНИЗАЦИЯ ==========
+        
+        function openSyncSettings() {
+            document.getElementById('spreadsheet-id').value = syncConfig.spreadsheetId;
+            document.getElementById('webapp-url').value = syncConfig.webAppUrl;
+            document.getElementById('sync-interval').value = syncConfig.syncInterval;
+            document.getElementById('sync-modal').classList.add('active');
+        }
+
+        function closeSyncSettings() {
+            document.getElementById('sync-modal').classList.remove('active');
+        }
+
+        function saveSyncSettings() {
+            const spreadsheetId = document.getElementById('spreadsheet-id').value.trim();
+            const webAppUrl = document.getElementById('webapp-url').value.trim();
+            const syncInterval = parseInt(document.getElementById('sync-interval').value) || 30;
+            
+            if (!webAppUrl) {
+                alert('❌ Введите URL веб-приложения Google Apps Script');
+                return;
+            }
+            
+            syncConfig = {
+                spreadsheetId: spreadsheetId,
+                webAppUrl: webAppUrl,
+                syncInterval: Math.max(10, syncInterval),
+                enabled: true,
+                lastSync: null
+            };
+            
+            saveData();
+            closeSyncSettings();
+            startSync();
+            
+            alert('✅ Синхронизация настроена! Данные будут синхронизироваться каждые ' + syncConfig.syncInterval + ' сек.');
+        }
+
+        function startSync() {
+            stopSync();
+            
+            if (syncConfig.enabled && syncConfig.webAppUrl) {
+                updateSyncStatus('sync-loading', '🔄 Подключение...');
+                
+                // Первая синхронизация сразу
+                syncFromGoogleSheets();
+                
+                // Запуск периодической синхронизации
+                syncTimer = setInterval(() => {
+                    syncFromGoogleSheets();
+                }, syncConfig.syncInterval * 1000);
+                
+                document.getElementById('syncSettingsBtn').classList.add('active-sync');
+                document.getElementById('syncSettingsBtn').textContent = '🔄 Синхронизация активна';
+            }
+        }
+
+        function stopSync() {
+            if (syncTimer) {
+                clearInterval(syncTimer);
+                syncTimer = null;
+            }
+            
+            if (!syncConfig.enabled) {
+                updateSyncStatus('sync-offline', '⚪ Нет синхронизации');
+                document.getElementById('syncSettingsBtn').classList.remove('active-sync');
+                document.getElementById('syncSettingsBtn').textContent = '🔄 Настроить синхронизацию';
+            }
+        }
+
+        async function syncFromGoogleSheets() {
+            if (!syncConfig.webAppUrl) return;
+            
+            try {
+                updateSyncStatus('sync-loading', '🔄 Синхронизация...');
+                
+                // Получаем данные из Google Sheets
+                const response = await fetch(syncConfig.webAppUrl, {
+                    method: 'GET',
+                    cache: 'no-cache'
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Ошибка получения данных');
+                }
+                
+                const remoteData = await response.json();
+                
+                // Если в облаке есть данные и они новее
+                if (remoteData && remoteData.lastUpdate) {
+                    const localTime = localStorage.getItem('lastUpdate') || 0;
+                    const remoteTime = remoteData.lastUpdate || 0;
+                    
+                    if (remoteTime > localTime) {
+                        // Облачные данные новее - загружаем их
+                        data = remoteData.data || data;
+                        history = remoteData.history || history;
+                        minLimits = remoteData.minLimits || minLimits;
+                        localStorage.setItem('lastUpdate', remoteTime);
+                        renderAll();
+                        updateStats();
+                    } else if (remoteTime < localTime) {
+                        // Локальные данные новее - отправляем в облако
+                        await pushToGoogleSheets();
+                    }
+                } else {
+                    // В облаке нет данных - отправляем свои
+                    await pushToGoogleSheets();
+                }
+                
+                syncConfig.lastSync = new Date().toLocaleString('ru-RU');
+                saveData();
+                updateSyncStatus('sync-online', '🟢 Синхронизировано');
+                
+            } catch (error) {
+                console.error('Ошибка синхронизации:', error);
+                updateSyncStatus('sync-error', '🔴 Ошибка: ' + error.message);
+            }
+        }
+
+        async function pushToGoogleSheets() {
+            if (!syncConfig.webAppUrl) return;
+            
+            const timestamp = Date.now();
+            const payload = {
+                data: data,
+                history: history,
+                minLimits: minLimits,
+                lastUpdate: timestamp
+            };
+            
+            try {
+                const response = await fetch(syncConfig.webAppUrl, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: {
+                        'Content-Type': 'text/plain;charset=utf-8',
+                    },
+                    body: JSON.stringify(payload)
+                });
+                
+                localStorage.setItem('lastUpdate', timestamp);
+                syncConfig.lastSync = new Date().toLocaleString('ru-RU');
+                
+            } catch (error) {
+                console.error('Ошибка отправки:', error);
+                throw error;
+            }
+        }
+
+        function syncNow() {
+            if (!syncConfig.enabled) {
+                alert('❌ Сначала настройте синхронизацию');
+                return;
+            }
+            syncFromGoogleSheets();
+            alert('✅ Синхронизация выполнена');
+        }
+
+        function updateSyncStatus(className, text) {
+            const statusDiv = document.getElementById('sync-status');
+            statusDiv.className = 'sync-status ' + className;
+            statusDiv.innerHTML = text;
+            
+            if (syncConfig.lastSync) {
+                statusDiv.title = 'Последняя синхронизация: ' + syncConfig.lastSync;
+            }
+        }
+
+        function disableSync() {
+            if (confirm('Отключить синхронизацию с Google Таблицами?')) {
+                syncConfig.enabled = false;
+                stopSync();
+                saveData();
+                updateSyncStatus('sync-offline', '⚪ Синхронизация отключена');
+                document.getElementById('syncSettingsBtn').classList.remove('active-sync');
+                document.getElementById('syncSettingsBtn').textContent = '🔄 Настроить синхронизацию';
+                alert('✅ Синхронизация отключена');
+            }
+        }
+
+        // ========== ОСТАЛЬНЫЕ ФУНКЦИИ ==========
+
         function toggleTheme() {
             darkMode = !darkMode;
             if (darkMode) {
@@ -802,7 +1093,6 @@
             saveData();
         }
 
-        // Переключение вкладок
         function switchTab(tabName) {
             document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
             document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
@@ -814,7 +1104,6 @@
             if (tabName === 'history') renderHistory();
         }
 
-        // Панель лимитов
         function toggleLimitsPanel() {
             showLimitsPanel = !showLimitsPanel;
             const panel = document.getElementById('limitsPanel');
@@ -836,7 +1125,6 @@
             const grid = document.getElementById('limitsGrid');
             let html = '';
             
-            // Собираем все позиции
             const allItems = {};
             for (const category in data) {
                 for (const item in data[category]) {
@@ -844,7 +1132,6 @@
                 }
             }
             
-            // Сортируем по алфавиту
             const sortedItems = Object.keys(allItems).sort();
             
             sortedItems.forEach(item => {
@@ -896,7 +1183,6 @@
             const inputs = document.querySelectorAll('.limit-input');
             inputs.forEach(input => {
                 const itemName = input.id.replace('limit-', '');
-                // Находим оригинальное название
                 for (const key in minLimits) {
                     if (key.replace(/[^a-zA-Zа-яА-Я0-9]/g, '') === itemName) {
                         minLimits[key] = Math.max(0, parseInt(input.value) || 0);
@@ -908,17 +1194,21 @@
             renderAll();
             checkCritical();
             renderLimitsPanel();
+            
+            // Синхронизируем с облаком
+            if (syncConfig.enabled) {
+                pushToGoogleSheets();
+            }
+            
             alert('✅ Все минимальные запасы сохранены!');
         }
 
-        // Изменение значения
         function updateValue(category, item, delta) {
             const oldValue = data[category][item];
             const newValue = Math.max(0, oldValue + delta);
             
             data[category][item] = newValue;
             
-            // Добавление в историю
             history.unshift({
                 timestamp: new Date().toLocaleString('ru-RU'),
                 item: item,
@@ -934,9 +1224,13 @@
             renderAll();
             checkCritical();
             saveData();
+            
+            // Автоматическая синхронизация при изменении
+            if (syncConfig.enabled) {
+                pushToGoogleSheets();
+            }
         }
 
-        // Прямой ввод значения
         function setValue(category, item, value) {
             const newValue = Math.max(0, parseInt(value) || 0);
             const oldValue = data[category][item];
@@ -958,9 +1252,12 @@
             renderAll();
             checkCritical();
             saveData();
+            
+            if (syncConfig.enabled) {
+                pushToGoogleSheets();
+            }
         }
 
-        // Быстрое редактирование мин. запаса
         function quickEditLimit(item) {
             const newMin = prompt(`Минимальный запас для "${item}":`, minLimits[item] || 0);
             if (newMin !== null) {
@@ -969,10 +1266,13 @@
                 renderAll();
                 checkCritical();
                 if (showLimitsPanel) renderLimitsPanel();
+                
+                if (syncConfig.enabled) {
+                    pushToGoogleSheets();
+                }
             }
         }
 
-        // Проверка критических значений
         function checkCritical() {
             const criticalItems = [];
             
@@ -999,7 +1299,6 @@
             }
         }
 
-        // Создание элемента управления
         function createItemControl(category, item, value, isSubItem = false) {
             const minLimit = minLimits[item] || 0;
             const isCritical = value <= minLimit;
@@ -1035,9 +1334,7 @@
             `;
         }
 
-        // Отрисовка всех секций
         function renderAll() {
-            // Запасы
             let suppliesHTML = '<h3 class="subsection-title">Скотч</h3>';
             suppliesHTML += createItemControl('supplies', 'Скотч желтый', data.supplies['Скотч желтый'], true);
             suppliesHTML += createItemControl('supplies', 'Скотч прозрачный', data.supplies['Скотч прозрачный'], true);
@@ -1053,14 +1350,12 @@
             suppliesHTML += createItemControl('supplies', 'Доски', data.supplies['Доски']);
             document.getElementById('supplies-section').innerHTML = suppliesHTML;
 
-            // Производство
             let productionHTML = '';
             for (const item in data.production) {
                 productionHTML += createItemControl('production', item, data.production[item]);
             }
             document.getElementById('production-section').innerHTML = productionHTML;
 
-            // Сборка
             let assemblyHTML = '<h3 class="subsection-title">Собранные непроверенные</h3>';
             assemblyHTML += createItemControl('assembly', 'Непроверенные черные', data.assembly['Непроверенные черные'], true);
             assemblyHTML += createItemControl('assembly', 'Непроверенные белые', data.assembly['Непроверенные белые'], true);
@@ -1079,7 +1374,6 @@
             renderHistory();
         }
 
-        // Отрисовка истории
         function renderHistory() {
             const historyDiv = document.getElementById('history-list');
             if (history.length === 0) {
@@ -1104,10 +1398,10 @@
                 history = [];
                 saveData();
                 renderHistory();
+                if (syncConfig.enabled) pushToGoogleSheets();
             }
         }
 
-        // Обновление статистики
         function updateStats() {
             const totalFrames = 
                 data.assembly['Непроверенные черные'] + data.assembly['Непроверенные белые'] +
@@ -1152,8 +1446,8 @@
                     <div class="stat-value">${history.length}</div>
                 </div>
                 <div class="stat-card">
-                    <h4>Всего позиций</h4>
-                    <div class="stat-value">${Object.keys(minLimits).length}</div>
+                    <h4>Синхронизация</h4>
+                    <div class="stat-value" style="font-size: 24px;">${syncConfig.enabled ? '🟢' : '⚪'}</div>
                 </div>
             `;
             
@@ -1169,6 +1463,7 @@
                 renderAll();
                 updateStats();
                 if (showLimitsPanel) renderLimitsPanel();
+                if (syncConfig.enabled) pushToGoogleSheets();
                 alert('✅ Все данные сброшены до начальных значений');
             }
         }
