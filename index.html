@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Управление производством</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏭</text></svg>">
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
     <style>
         :root {
             --bg: #fff; --bg2: #f8faf8; --txt: #2d3436; --txt2: #636e72;
@@ -12,7 +15,6 @@
             --shadow: 0 2px 8px rgba(0,0,0,.1); --card: #fff; --hover: #f0f7f0;
             --blue: #74b9ff; --yellow: #ffd93d; --grid: #e0e0e0; --admin: #e74c3c;
             --drag: #ffeaa7;
-            --prod1: #4caf50; --prod2: #3498db; --prod3: #9b59b6;
         }
         [data-theme="dark"] {
             --bg: #1a1a2e; --bg2: #16213e; --txt: #e0e0e0; --txt2: #a0a0a0;
@@ -28,7 +30,7 @@
         }
         .auth-overlay { position: fixed; inset: 0; background: var(--bg); z-index: 9999; display: flex; justify-content: center; align-items: center; }
         .auth-overlay.hidden { display: none; }
-        .auth-card { background: var(--card); border-radius: 20px; padding: 40px; border: 2px solid var(--brd); box-shadow: var(--shadow); text-align: center; max-width: 500px; width: 90%; max-height: 80vh; overflow-y: auto; }
+        .auth-card { background: var(--card); border-radius: 20px; padding: 40px; border: 2px solid var(--brd); box-shadow: var(--shadow); text-align: center; max-width: 440px; width: 90%; }
         .auth-card h2 { color: var(--green); margin-bottom: 20px; }
         .auth-input { width: 100%; padding: 12px; margin: 10px 0; border: 2px solid var(--brd); border-radius: 10px; font-size: 24px; text-align: center; letter-spacing: 10px; background: var(--bg); color: var(--txt); }
         .auth-input:focus { outline: none; border-color: var(--green); }
@@ -37,78 +39,89 @@
         .user-btn:hover { background: var(--green); color: #fff; border-color: var(--green); }
         .user-btn.admin-btn { border-color: var(--admin); color: var(--admin); }
         .user-btn.admin-btn:hover { background: var(--admin); color: #fff; }
+        .prod-btn { padding: 14px; border: 2px solid var(--brd); border-radius: 12px; background: var(--card); color: var(--txt); cursor: pointer; font-size: 17px; transition: all .3s; text-align: center; margin: 5px 0; font-weight: 600; }
+        .prod-btn:hover { transform: scale(1.02); }
         .custom-user-btn { font-style: italic; }
-        .production-btn { padding: 16px; border: 3px solid var(--brd); border-radius: 15px; background: var(--card); color: var(--txt); cursor: pointer; font-size: 16px; transition: all .3s; text-align: left; margin: 8px 0; width: 100%; }
-        .production-btn.prod1 { border-left: 6px solid var(--prod1); }
-        .production-btn.prod2 { border-left: 6px solid var(--prod2); }
-        .production-btn.prod3 { border-left: 6px solid var(--prod3); }
-        .production-btn:hover { background: var(--hover); transform: translateX(5px); }
-        .production-btn .prod-name { font-weight: 700; font-size: 18px; }
-        .production-btn .prod-info { font-size: 12px; color: var(--txt2); margin-top: 4px; }
         .app-container { max-width: 1400px; margin: 0 auto; padding: 20px; }
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding: 15px; background: var(--card); border-radius: 15px; border: 2px solid var(--brd); box-shadow: var(--shadow); flex-wrap: wrap; gap: 10px; }
-        .header h1 { font-size: clamp(18px, 4vw, 24px); }
-        .header.prod1 h1 { color: var(--prod1); } .header.prod2 h1 { color: var(--prod2); } .header.prod3 h1 { color: var(--prod3); }
+        .header h1 { color: var(--green); font-size: clamp(18px, 4vw, 24px); }
         .header-controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
         .badge { padding: 6px 12px; border-radius: 20px; font-size: 13px; font-weight: 600; white-space: nowrap; background: var(--hover); color: var(--txt); cursor: pointer; border: 2px solid var(--brd); }
         .badge:hover { background: var(--green); color: #fff; }
         .badge.admin-badge { border-color: var(--admin); }
         .badge.admin-badge:hover { background: var(--admin); }
-        .prod-badge { padding: 6px 12px; border-radius: 20px; font-size: 13px; font-weight: 600; white-space: nowrap; cursor: pointer; border: 2px solid var(--brd); }
-        .prod-badge.prod1 { background: #d4edda; color: #155724; border-color: var(--prod1); }
-        .prod-badge.prod2 { background: #d6eaf8; color: #1a5276; border-color: var(--prod2); }
-        .prod-badge.prod3 { background: #e8daef; color: #4a235a; border-color: var(--prod3); }
+        .prod-indicator { padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 700; white-space: nowrap; color: #fff; }
         .sync { padding: 6px 12px; border-radius: 20px; font-size: 13px; font-weight: 600; white-space: nowrap; }
-        .sync-online { background: #d4edda; color: #155724; } .sync-offline { background: #fff3cd; color: #856404; }
-        .sync-error { background: #f8d7da; color: #721c24; } .sync-loading { background: #cce5ff; color: #004085; }
-        [data-theme="dark"] .sync-online { background: #1e3a2f; color: #66bb6a; } [data-theme="dark"] .sync-offline { background: #3d3520; color: #ffd54f; }
-        [data-theme="dark"] .sync-error { background: #3d2020; color: #ef5350; } [data-theme="dark"] .sync-loading { background: #1a2a3d; color: #66b0ff; }
+        .sync-online { background: #d4edda; color: #155724; }
+        .sync-offline { background: #fff3cd; color: #856404; }
+        .sync-error { background: #f8d7da; color: #721c24; }
+        .sync-loading { background: #cce5ff; color: #004085; }
+        [data-theme="dark"] .sync-online { background: #1e3a2f; color: #66bb6a; }
+        [data-theme="dark"] .sync-offline { background: #3d3520; color: #ffd54f; }
+        [data-theme="dark"] .sync-error { background: #3d2020; color: #ef5350; }
+        [data-theme="dark"] .sync-loading { background: #1a2a3d; color: #66b0ff; }
         .btn-sm { padding: 8px 14px; border: 2px solid var(--brd); border-radius: 8px; background: var(--card); color: var(--txt); cursor: pointer; transition: all .3s; font-size: 13px; white-space: nowrap; }
-        .btn-sm:hover { background: var(--hover); } .btn-sm.active { background: var(--green); color: #fff; border-color: var(--green); }
-        .btn-sm.admin-btn { border-color: var(--admin); color: var(--admin); } .btn-sm.admin-btn:hover { background: var(--admin); color: #fff; }
+        .btn-sm:hover { background: var(--hover); }
+        .btn-sm.active { background: var(--green); color: #fff; border-color: var(--green); }
+        .btn-sm.admin-btn { border-color: var(--admin); color: var(--admin); }
+        .btn-sm.admin-btn:hover { background: var(--admin); color: #fff; }
         .sections-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 350px), 1fr)); gap: 20px; margin-bottom: 25px; }
         .section-box { background: var(--card); border-radius: 15px; padding: 20px; border: 2px solid var(--brd); box-shadow: var(--shadow); }
-        .section-title { font-size: clamp(16px, 3vw, 20px); margin-bottom: 15px; padding-bottom: 10px; border-bottom: 2px solid var(--brd2); }
+        .section-title { color: var(--green); font-size: clamp(16px, 3vw, 20px); margin-bottom: 15px; padding-bottom: 10px; border-bottom: 2px solid var(--brd2); }
         .subsection-title { color: var(--txt); font-size: 14px; margin: 12px 0 8px; font-weight: 600; }
         .inventory-item { margin-bottom: 12px; padding: 12px; background: var(--bg2); border-radius: 10px; border: 1px solid var(--brd2); }
         .inventory-item.sub { margin-left: 15px; padding: 8px; background: var(--bg); }
         .item-name { font-weight: 600; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; font-size: clamp(12px, 2.5vw, 14px); }
-        .item-name .rename-icon { font-size: 10px; cursor: pointer; opacity: 0.5; margin-left: 4px; } .item-name .rename-icon:hover { opacity: 1; color: var(--blue); }
+        .item-name .rename-icon { font-size: 10px; cursor: pointer; opacity: 0.5; margin-left: 4px; }
+        .item-name .rename-icon:hover { opacity: 1; color: var(--blue); }
         .item-value { font-size: clamp(14px, 3vw, 18px); font-weight: bold; }
-        .critical { color: var(--red); animation: pulse 2s infinite; } @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
-        .min-badge { font-size: 11px; padding: 2px 6px; border-radius: 10px; background: var(--brd2); color: var(--txt2); cursor: pointer; } .min-badge:hover { background: var(--green); color: #fff; }
+        .critical { color: var(--red); animation: pulse 2s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
+        .min-badge { font-size: 11px; padding: 2px 6px; border-radius: 10px; background: var(--brd2); color: var(--txt2); cursor: pointer; }
+        .min-badge:hover { background: var(--green); color: #fff; }
         .item-controls { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
-        .qty-input { width: 60px; padding: 6px; border: 2px solid var(--brd); border-radius: 6px; text-align: center; font-size: 14px; background: var(--bg); color: var(--txt); } .qty-input:focus { outline: none; border-color: var(--green); }
+        .qty-input { width: 60px; padding: 6px; border: 2px solid var(--brd); border-radius: 6px; text-align: center; font-size: 14px; background: var(--bg); color: var(--txt); }
+        .qty-input:focus { outline: none; border-color: var(--green); }
         .btn { padding: 6px 10px; border: none; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: bold; transition: all .3s; color: #fff; min-width: 35px; }
-        .btn-minus10 { background: #e74c3c; } .btn-minus1 { background: #ff7675; } .btn-plus1 { background: #55efc4; color: #2d3436; } .btn-plus10 { background: #00b894; }
-        .btn-delete { background: #c0392b; font-size: 10px; padding: 4px 6px; min-width: auto; } .btn-rename { background: #f39c12; font-size: 10px; padding: 4px 8px; min-width: auto; }
+        .btn-minus10 { background: #e74c3c; } .btn-minus1 { background: #ff7675; }
+        .btn-plus1 { background: #55efc4; color: #2d3436; } .btn-plus10 { background: #00b894; }
+        .btn-delete { background: #c0392b; font-size: 10px; padding: 4px 6px; min-width: auto; }
+        .btn-rename { background: #f39c12; font-size: 10px; padding: 4px 8px; min-width: auto; }
         .btn:hover { transform: scale(1.05); opacity: .9; } .btn:active { transform: scale(.95); }
         .panel { background: var(--card); border-radius: 15px; padding: 20px; border: 2px solid var(--brd); box-shadow: var(--shadow); margin-bottom: 25px; }
         .history-list { max-height: 350px; overflow-y: auto; }
-        .history-item { padding: 10px; border-bottom: 1px solid var(--brd2); font-size: 13px; color: var(--txt2); } .history-item:last-child { border-bottom: none; }
+        .history-item { padding: 10px; border-bottom: 1px solid var(--brd2); font-size: 13px; color: var(--txt2); }
+        .history-item:last-child { border-bottom: none; }
         .history-summary { padding: 10px; border-radius: 8px; margin: 5px 0; font-weight: bold; font-size: 14px; }
-        .history-summary.added { background: #d4edda; color: #155724; } .history-summary.removed { background: #f8d7da; color: #721c24; }
-        [data-theme="dark"] .history-summary.added { background: #1e3a2f; color: #66bb6a; } [data-theme="dark"] .history-summary.removed { background: #3d2020; color: #ef5350; }
+        .history-summary.added { background: #d4edda; color: #155724; }
+        .history-summary.removed { background: #f8d7da; color: #721c24; }
+        [data-theme="dark"] .history-summary.added { background: #1e3a2f; color: #66bb6a; }
+        [data-theme="dark"] .history-summary.removed { background: #3d2020; color: #ef5350; }
         .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-top: 15px; }
         .stat-card { background: var(--bg2); padding: 15px; border-radius: 10px; border: 1px solid var(--brd2); text-align: center; }
-        .stat-card h4 { color: var(--txt2); margin-bottom: 8px; font-size: 13px; } .stat-value { font-size: clamp(24px, 5vw, 32px); font-weight: bold; color: var(--green); }
+        .stat-card h4 { color: var(--txt2); margin-bottom: 8px; font-size: 13px; }
+        .stat-value { font-size: clamp(24px, 5vw, 32px); font-weight: bold; color: var(--green); }
         .tabs { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
         .tab { padding: 8px 16px; border: 2px solid var(--brd); border-radius: 8px; background: var(--card); color: var(--txt); cursor: pointer; font-size: 14px; transition: all .3s; white-space: nowrap; }
-        .tab.active { background: var(--green); color: #fff; border-color: var(--green); } .tab:hover { background: var(--hover); } .tab.active:hover { background: var(--green); }
+        .tab.active { background: var(--green); color: #fff; border-color: var(--green); }
+        .tab:hover { background: var(--hover); } .tab.active:hover { background: var(--green); }
         .tab-content { display: none; } .tab-content.active { display: block; }
         .alert-box { background: #fff3f3; border: 2px solid var(--red); border-radius: 10px; padding: 12px; margin-bottom: 15px; }
         [data-theme="dark"] .alert-box { background: #3d2020; }
-        .alert-header { display: flex; justify-content: space-between; align-items: center; cursor: pointer; } .alert-header h3 { color: var(--red); margin: 0; font-size: 16px; }
+        .alert-header { display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
+        .alert-header h3 { color: var(--red); margin: 0; font-size: 16px; }
         .alert-body { margin-top: 10px; } .alert-body.hidden { display: none; }
-        .alert-item { color: var(--red); padding: 4px 0; font-size: 13px; } .alert-section { color: var(--red); font-weight: 600; margin: 8px 0 4px; font-size: 14px; }
-        .limits-panel { background: var(--card); border-radius: 15px; padding: 20px; border: 2px solid var(--yellow); box-shadow: var(--shadow); margin-bottom: 25px; display: none; } .limits-panel.show { display: block; }
+        .alert-item { color: var(--red); padding: 4px 0; font-size: 13px; }
+        .alert-section { color: var(--red); font-weight: 600; margin: 8px 0 4px; font-size: 14px; }
+        .limits-panel { background: var(--card); border-radius: 15px; padding: 20px; border: 2px solid var(--yellow); box-shadow: var(--shadow); margin-bottom: 25px; display: none; }
+        .limits-panel.show { display: block; }
         .limits-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; margin-top: 15px; }
         .limit-item { display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg2); border-radius: 8px; border: 1px solid var(--brd2); font-size: 13px; }
         .limit-name { font-weight: 600; flex: 1; } .limit-controls { display: flex; align-items: center; gap: 6px; }
         .limit-input { width: 60px; padding: 5px; border: 2px solid var(--brd); border-radius: 6px; text-align: center; font-size: 13px; background: var(--bg); color: var(--txt); }
         .pinboard { background: var(--card); border-radius: 15px; padding: 15px; border: 2px solid var(--blue); box-shadow: var(--shadow); margin-bottom: 15px; }
-        .pinboard-header { display: flex; justify-content: space-between; align-items: center; cursor: pointer; } .pinboard-header h2 { color: var(--blue); font-size: 18px; margin: 0; }
-        .pinboard-body { margin-top: 12px; } .pinboard-body.hidden { display: none; }
+        .pinboard-header { display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
+        .pinboard-header h2 { color: var(--blue); font-size: 18px; margin: 0; } .pinboard-body { margin-top: 12px; } .pinboard-body.hidden { display: none; }
         .note-card { background: var(--bg2); border-radius: 10px; padding: 12px; margin-bottom: 8px; border: 1px solid var(--brd2); font-size: 13px; }
         .note-card.done { opacity: .6; border-left: 4px solid var(--green); }
         .note-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; flex-wrap: wrap; gap: 5px; }
@@ -116,16 +129,22 @@
         .note-meta { display: flex; gap: 10px; font-size: 11px; color: var(--txt2); flex-wrap: wrap; }
         .note-actions { display: flex; gap: 4px; margin-top: 6px; }
         .note-btn { padding: 3px 8px; border: 1px solid var(--brd); border-radius: 4px; background: var(--card); color: var(--txt); cursor: pointer; font-size: 11px; }
-        .note-btn.done-btn { color: var(--green); border-color: var(--green); } .note-btn.delete-btn { color: var(--red); border-color: var(--red); } .note-btn.edit-btn { color: var(--blue); border-color: var(--blue); }
+        .note-btn.done-btn { color: var(--green); border-color: var(--green); }
+        .note-btn.delete-btn { color: var(--red); border-color: var(--red); }
+        .note-btn.edit-btn { color: var(--blue); border-color: var(--blue); }
         .add-note-form { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; padding: 12px; background: var(--bg2); border-radius: 10px; border: 1px dashed var(--brd); }
         .add-note-form input, .add-note-form select { padding: 8px; border: 2px solid var(--brd); border-radius: 8px; font-size: 13px; background: var(--bg); color: var(--txt); flex: 1; min-width: 120px; }
         .goal-item { display: flex; align-items: center; gap: 10px; padding: 10px; background: var(--bg2); border-radius: 8px; margin-bottom: 8px; flex-wrap: wrap; }
-        .goal-label { font-weight: 600; min-width: 80px; font-size: 14px; } .goal-input { width: 70px; padding: 6px; border: 2px solid var(--brd); border-radius: 6px; text-align: center; font-size: 14px; background: var(--bg); color: var(--txt); }
-        .goal-progress { font-size: 14px; font-weight: bold; padding: 4px 10px; border-radius: 10px; } .goal-done { background: #d4edda; color: #155724; } .goal-pending { background: #fff3cd; color: #856404; }
+        .goal-label { font-weight: 600; min-width: 80px; font-size: 14px; }
+        .goal-input { width: 70px; padding: 6px; border: 2px solid var(--brd); border-radius: 6px; text-align: center; font-size: 14px; background: var(--bg); color: var(--txt); }
+        .goal-progress { font-size: 14px; font-weight: bold; padding: 4px 10px; border-radius: 10px; }
+        .goal-done { background: #d4edda; color: #155724; } .goal-pending { background: #fff3cd; color: #856404; }
         .goal-history-table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 13px; }
         .goal-history-table th, .goal-history-table td { padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--brd2); }
         .goal-history-table th { color: var(--txt2); font-weight: 600; background: var(--bg2); position: sticky; top: 0; }
-        .admin-panel { background: var(--card); border-radius: 15px; padding: 20px; border: 2px solid var(--admin); box-shadow: var(--shadow); margin-bottom: 25px; display: none; } .admin-panel.show { display: block; }
+
+        .admin-panel { background: var(--card); border-radius: 15px; padding: 20px; border: 2px solid var(--admin); box-shadow: var(--shadow); margin-bottom: 25px; display: none; }
+        .admin-panel.show { display: block; }
         .admin-section { margin-bottom: 20px; padding: 15px; background: var(--bg2); border-radius: 10px; border: 1px solid var(--brd2); }
         .admin-section h3 { color: var(--admin); margin-bottom: 10px; font-size: 16px; }
         .admin-form { display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; align-items: flex-end; }
@@ -133,46 +152,59 @@
         .admin-form select:focus, .admin-form input:focus { outline: none; border-color: var(--admin); }
         .draggable-list { list-style: none; }
         .draggable-item { display: flex; align-items: center; gap: 8px; padding: 10px; margin: 4px 0; background: var(--card); border: 2px solid var(--brd); border-radius: 8px; cursor: grab; transition: all .2s; font-size: 13px; }
-        .draggable-item:active { cursor: grabbing; } .draggable-item.dragging { opacity: 0.5; background: var(--drag); }
+        .draggable-item:active { cursor: grabbing; }
+        .draggable-item.dragging { opacity: 0.5; background: var(--drag); }
         .draggable-item.drag-over { border-color: var(--admin); border-style: dashed; background: var(--drag); }
-        .draggable-item .drag-handle { cursor: grab; color: var(--txt2); font-size: 16px; padding: 0 4px; } .draggable-item .item-text { flex: 1; }
+        .draggable-item .drag-handle { cursor: grab; color: var(--txt2); font-size: 16px; padding: 0 4px; }
+        .draggable-item .item-text { flex: 1; }
         .draggable-item.group-header { background: var(--hover); font-weight: 700; cursor: default; border-color: var(--admin); font-size: 14px; }
         .admin-item-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 10px; }
         .admin-item-card { display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg2); border-radius: 8px; border: 1px solid var(--brd2); font-size: 13px; }
         .admin-item-card .item-info { flex: 1; } .admin-item-card .item-info small { color: var(--txt2); display: block; }
-        .sync-indicator { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; }
-        .sync-indicator.synced { background: #4caf50; } .sync-indicator.not-synced { background: #ff9800; }
-        .overall-stats-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        .overall-stats-table th, .overall-stats-table td { padding: 10px 12px; text-align: center; border-bottom: 1px solid var(--brd2); }
-        .overall-stats-table th { background: var(--bg2); font-weight: 600; }
-        .overall-stats-table .prod-row-1 { border-left: 4px solid var(--prod1); } .overall-stats-table .prod-row-2 { border-left: 4px solid var(--prod2); } .overall-stats-table .prod-row-3 { border-left: 4px solid var(--prod3); }
-        .debug-console { position: fixed; bottom: 0; left: 0; right: 0; height: 200px; background: #1a1a2e; color: #00ff88; font-family: monospace; font-size: 12px; z-index: 10000; display: none; flex-direction: column; border-top: 3px solid #00ff88; } .debug-console.show { display: flex; }
+
+        .debug-console { position: fixed; bottom: 0; left: 0; right: 0; height: 200px; background: #1a1a2e; color: #00ff88; font-family: monospace; font-size: 12px; z-index: 10000; display: none; flex-direction: column; border-top: 3px solid #00ff88; }
+        .debug-console.show { display: flex; }
         .debug-header { display: flex; justify-content: space-between; align-items: center; padding: 5px 10px; background: #0d0d1a; border-bottom: 1px solid #333; }
-        .debug-header span { color: #00ff88; font-weight: bold; } .debug-header button { background: #e74c3c; color: #fff; border: none; padding: 3px 10px; border-radius: 3px; cursor: pointer; font-size: 11px; }
+        .debug-header span { color: #00ff88; font-weight: bold; }
+        .debug-header button { background: #e74c3c; color: #fff; border: none; padding: 3px 10px; border-radius: 3px; cursor: pointer; font-size: 11px; }
         .debug-header button.clear-btn { background: #f39c12; margin-right: 5px; }
         .debug-output { flex: 1; overflow-y: auto; padding: 5px 10px; white-space: pre-wrap; word-break: break-all; }
-        .debug-toggle { position: fixed; bottom: 5px; right: 5px; z-index: 10001; background: #1a1a2e; color: #00ff88; border: 2px solid #00ff88; padding: 5px 10px; border-radius: 5px; cursor: pointer; font-family: monospace; font-size: 12px; font-weight: bold; }
-        .tg-test-btn { position: fixed; bottom: 38px; right: 5px; z-index: 10001; background: #1a1a2e; color: #74b9ff; border: 2px solid #74b9ff; padding: 3px 8px; border-radius: 5px; cursor: pointer; font-family: monospace; font-size: 11px; font-weight: bold; opacity: 0.6; display: none; }
-        .tg-test-btn.visible { display: block; } .tg-test-btn:hover { opacity: 1; }
+        .debug-output .log-info { color: #00ff88; }
+        .debug-output .log-warn { color: #ffd93d; }
+        .debug-output .log-error { color: #ff6b6b; }
+        .debug-output .log-action { color: #74b9ff; }
+        .debug-toggle { position: fixed; bottom: 5px; right: 5px; z-index: 10001; background: #1a1a2e; color: #00ff88; border: 2px solid #00ff88; padding: 5px 10px; border-radius: 5px; cursor: pointer; font-family: monospace; font-size: 12px; font-weight: bold; display: none; }
+        .tg-test-btn { position: fixed; bottom: 35px; right: 5px; z-index: 10001; background: #1a1a2e; color: #74b9ff; border: 2px solid #74b9ff; padding: 3px 8px; border-radius: 5px; cursor: pointer; font-family: monospace; font-size: 11px; font-weight: bold; opacity: 0.6; display: none; }
+        .tg-test-btn:hover { opacity: 1; }
+        .ilya-admin-toggle { padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; cursor: pointer; transition: all .3s; border: 2px solid var(--admin); background: var(--card); color: var(--admin); white-space: nowrap; }
+        .ilya-admin-toggle:hover { background: var(--admin); color: #fff; }
+        .ilya-admin-toggle.active { background: var(--admin); color: #fff; }
+
         .toast { position: fixed; bottom: 20px; right: 20px; background: var(--green); color: #fff; padding: 10px 20px; border-radius: 20px; box-shadow: var(--shadow); display: none; z-index: 999; }
-        ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: var(--bg2); } ::-webkit-scrollbar-thumb { background: var(--brd); border-radius: 3px; }
+        ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: var(--bg2); }
+        ::-webkit-scrollbar-thumb { background: var(--brd); border-radius: 3px; }
         @media (max-width: 768px) {
-            .app-container { padding: 10px; } .sections-grid { grid-template-columns: 1fr; gap: 15px; } .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
-            .header { padding: 12px; gap: 8px; } .header h1 { font-size: 18px; } .btn-sm { padding: 6px 10px; font-size: 11px; } .tabs { gap: 5px; }
-            .tab { padding: 6px 10px; font-size: 12px; } .limits-grid { grid-template-columns: 1fr; } .add-note-form { flex-direction: column; }
-            .section-box { padding: 15px; } .inventory-item { padding: 10px; } .btn { padding: 5px 8px; font-size: 11px; min-width: 30px; }
-            .qty-input { width: 50px; padding: 5px; font-size: 12px; } .admin-item-list { grid-template-columns: 1fr; }
+            .app-container { padding: 10px; } .sections-grid { grid-template-columns: 1fr; gap: 15px; }
+            .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+            .header { padding: 12px; gap: 8px; } .header h1 { font-size: 18px; }
+            .btn-sm { padding: 6px 10px; font-size: 11px; } .tabs { gap: 5px; }
+            .tab { padding: 6px 10px; font-size: 12px; } .limits-grid { grid-template-columns: 1fr; }
+            .add-note-form { flex-direction: column; } .section-box { padding: 15px; }
+            .inventory-item { padding: 10px; } .btn { padding: 5px 8px; font-size: 11px; min-width: 30px; }
+            .qty-input { width: 50px; padding: 5px; font-size: 12px; }
+            .admin-item-list { grid-template-columns: 1fr; }
         }
     </style>
 </head>
 <body>
     <div class="auth-overlay" id="authOverlay"><div class="auth-card" id="authCard"></div></div>
     <div class="app-container" id="appContainer" style="display:none">
-        <header class="header prod1" id="mainHeader">
-            <h1>🏭 Производство</h1>
+        <header class="header">
+            <h1>🏭 <span id="headerProdName">Производство</span></h1>
             <div class="header-controls">
-                <span class="prod-badge prod1" onclick="switchProductionScreen()" id="prodBadge">🟢 Производство 1</span>
+                <span class="prod-indicator" id="prodIndicator">🔵</span>
                 <span class="badge" onclick="switchUser()" id="userBadge">👤</span>
+                <button class="ilya-admin-toggle" id="ilyaAdminToggle" style="display:none" onclick="toggleIlyaAdmin()">🔧 Админ</button>
                 <span class="sync sync-loading" id="syncStatus">🔄</span>
                 <button class="btn-sm" onclick="syncNow()">🔄</button>
                 <button class="btn-sm" onclick="dailySummary()">📅 Итог</button>
@@ -180,10 +212,8 @@
                 <button class="btn-sm" onclick="toggleTheme()">🌙</button>
             </div>
         </header>
-        <div class="admin-panel" id="adminPanel">
-            <h2 class="section-title" style="color:var(--admin)">🔧 Админ-панель</h2>
-            <div class="admin-section"><h3><span class="sync-indicator synced" id="syncIndicator"></span> Статус синхронизации</h3><p style="font-size:13px;color:var(--txt2)" id="syncStatusText">✅ Структура синхронизирована</p></div>
-            <div class="admin-section"><h3>📋 Копировать структуру</h3><div class="admin-form"><select id="copyFrom"><option value="production1">🟢 Производство 1</option><option value="production2">🔵 Производство 2</option><option value="production3">🟣 Производство 3</option></select><span>→</span><select id="copyTo"><option value="production2">🔵 Производство 2</option><option value="production1">🟢 Производство 1</option><option value="production3">🟣 Производство 3</option></select><button class="btn btn-plus10" onclick="copyStructure()">📋 Копировать</button></div></div>
+        <div class="admin-panel" id="adminPanel"><h2 class="section-title" style="color:var(--admin)">🔧 Админ-панель</h2>
+            <div class="admin-section"><h3>🏭 Управление производствами</h3><div class="admin-form"><input type="text" id="newProdName" placeholder="Название нового производства" maxlength="30"><button class="btn btn-plus10" onclick="adminAddProduction()">➕ Добавить</button></div><div class="admin-form"><select id="renameProdSelect"></select><input type="text" id="renameProdInput" placeholder="Новое название" maxlength="30"><button class="btn btn-rename" onclick="adminRenameProduction()">✏️ Переименовать</button></div></div>
             <div class="admin-section"><h3>📋 Порядок элементов (Drag & Drop)</h3><div class="admin-form"><select id="orderCategory" onchange="renderDraggableList()"><option value="supplies">📦 Запасы</option><option value="production">⚙️ Производство</option><option value="assembly">🔧 Сборка</option></select><button class="btn btn-plus10" onclick="saveOrder()">💾 Сохранить порядок</button></div><div class="draggable-list" id="draggableList"></div></div>
             <div class="admin-section"><h3>✏️ Переименовать элемент</h3><div class="admin-form"><select id="renameCategory" onchange="updateRenameSelects()"><option value="supplies">📦 Запасы</option><option value="production">⚙️ Производство</option><option value="assembly">🔧 Сборка</option></select><select id="renameItem"><option value="">Выберите элемент...</option></select><input type="text" id="renameNewName" placeholder="Новое название" maxlength="50"><button class="btn btn-rename" onclick="adminRenameItem()">✏️ Переименовать</button></div></div>
             <div class="admin-section"><h3>➕ Добавить элемент</h3><div class="admin-form"><select id="adminCategory" onchange="updateAdminGroupSelect()"><option value="supplies">📦 Запасы</option><option value="production">⚙️ Производство</option><option value="assembly">🔧 Сборка</option></select><select id="adminGroup"><option value="">Без группы</option></select><input type="text" id="adminItemName" placeholder="Название" maxlength="50"><input type="number" id="adminItemValue" value="1" min="0" style="width:70px"><button class="btn btn-plus10" onclick="adminAddItem()">➕ Добавить</button></div></div>
@@ -195,172 +225,378 @@
             <button class="tab active" onclick="switchTab('inventory')">📦 Производство</button>
             <button class="tab" onclick="switchTab('history')">📋 История</button>
             <button class="tab" onclick="switchTab('stats')">📊 Статистика</button>
-            <button class="tab" onclick="switchTab('overall')">📋 Общая</button>
             <button class="tab" onclick="switchTab('goals')">🎯 Цели</button>
         </div>
         <div id="tab-inventory" class="tab-content active"><div id="alerts"></div><div class="pinboard" id="pinboard"><div class="pinboard-header" onclick="togglePinboard()"><h2>📌 Записки <span id="noteCount">[0]</span></h2><span id="pinboardArrow">▼</span></div><div class="pinboard-body" id="pinboardBody"><div id="notesList"></div><div class="add-note-form"><input type="text" id="newNoteText" placeholder="Текст записки..." maxlength="200"><select id="newNoteAssignee"><option value="">Исполнитель...</option></select><button class="btn btn-plus10" onclick="addNote()">+</button></div></div></div><div class="sections-grid"><div class="section-box"><h2 class="section-title">📦 Отдел 1: Запасы</h2><div id="supplies"></div></div><div class="section-box"><h2 class="section-title">⚙️ Отдел 2: Производство</h2><div id="production"></div></div><div class="section-box"><h2 class="section-title">🔧 Отдел 3: Сборка</h2><div id="assembly"></div></div></div></div>
         <div id="tab-history" class="tab-content"><div class="panel"><h2 class="section-title">📋 История изменений</h2><div style="margin-bottom:15px;display:flex;gap:10px"><button class="btn btn-minus10" onclick="clearHistory()">🗑️ Очистить</button><button class="btn btn-plus10" onclick="dailySummary()">📅 Итог дня</button></div><div class="history-list" id="historyList"></div></div></div>
         <div id="tab-stats" class="tab-content"><div class="panel"><h2 class="section-title">📊 Статистика</h2><div class="stats-grid" id="statsGrid"></div></div></div>
-        <div id="tab-overall" class="tab-content"><div class="panel"><h2 class="section-title">📋 Общая статистика по производствам</h2><div style="overflow-x:auto"><table class="overall-stats-table"><thead><tr><th>Производство</th><th>Отгружено всего</th><th>Критических запасов</th><th>Упаковано сегодня</th></tr></thead><tbody id="overallStatsBody"></tbody></table></div></div></div>
         <div id="tab-goals" class="tab-content"><div class="panel"><h2 class="section-title">🎯 Цели на день</h2><div id="goalsContent"></div></div></div>
     </div>
     <div class="toast" id="toast">✓ Сохранено</div>
-    <button class="debug-toggle" onclick="toggleDebugConsole()">🐛</button>
+    <button class="debug-toggle" id="debugToggle" onclick="toggleDebugConsole()">🐛</button>
     <button class="tg-test-btn" id="tgTestBtn" onclick="testTelegramReport()" title="Тестовый Telegram-отчёт">📤</button>
     <div class="debug-console" id="debugConsole"><div class="debug-header"><span>🔍 КОНСОЛЬ ОТЛАДКИ</span><div><button class="clear-btn" onclick="clearDebugConsole()">Очистить</button><button onclick="toggleDebugConsole()">✕</button></div></div><div class="debug-output" id="debugOutput"></div></div>
 
     <script>
-    // ===== ЛОГИ =====
-    var debugConsoleOpen = false, debugLogs = [], MAX_DEBUG_LOGS = 200;
-    function debugLog(l, m, d) { var t = new Date().toLocaleTimeString('ru-RU'); var e = { time: t, level: l, message: m, data: d }; debugLogs.push(e); if (debugLogs.length > MAX_DEBUG_LOGS) debugLogs.shift(); var c = '[' + t + '] ' + m; if (l === 'error') console.error(c, d || ''); else if (l === 'warn') console.warn(c, d || ''); else console.log(c, d || ''); updateDebugOutput(); }
-    function updateDebugOutput() { var o = document.getElementById('debugOutput'); if (!o) return; o.innerHTML = debugLogs.map(function(l) { return '<div class="log-' + l.level + '">[' + l.time + '] ' + l.message + (l.data !== undefined ? ' ' + JSON.stringify(l.data) : '') + '</div>'; }).join(''); o.scrollTop = o.scrollHeight; }
-    function toggleDebugConsole() { debugConsoleOpen = !debugConsoleOpen; var e = document.getElementById('debugConsole'); debugConsoleOpen ? (e.classList.add('show'), updateDebugOutput()) : e.classList.remove('show'); }
-    function clearDebugConsole() { debugLogs = []; updateDebugOutput(); }
+    // ===== FIREBASE =====
+    var firebaseConfig = {
+        apiKey: "AIzaSyA037INFOcN1DK_-sGSW_hA-tp7hs198JE",
+        authDomain: "production-manager-f63c6.firebaseapp.com",
+        projectId: "production-manager-f63c6",
+        storageBucket: "production-manager-f63c6.firebasestorage.app",
+        messagingSenderId: "167318220104",
+        appId: "1:167318220104:web:7e498da758a22873c3d77d"
+    };
+    firebase.initializeApp(firebaseConfig);
+    var db = firebase.firestore();
+    db.enablePersistence().catch(function(err) { console.log('Offline persistence error:', err); });
 
-    // ===== КОНФИГ =====
-    var SYNC_URL = 'https://script.google.com/macros/s/AKfycbwFFwpVuzMNiHUUutcEQtb5MM4qx5ZiJzHgnPHSYP5z1iZnPu_7iTyVPWJc6mI8-4VV/exec';
-    var SYNC_INTERVAL = 15000;
-    var PASSWORD = '1980';
-    var USER_LIST = ['Админ', 'Илья', 'Глеб', 'Артур', 'Наём. Раб.'];
-    var USER_COLORS = { 'Админ': '#e74c3c', 'Илья': '#3498db', 'Глеб': '#e67e22', 'Артур': '#9b59b6', 'Наём. Раб.': '#95a5a6' };
-    var SECTION_NAMES = { supplies: '📦 Запасы', production: '⚙️ Производство', assembly: '🔧 Сборка' };
-    var PRODUCTION_NAMES = { production1: '🟢 Производство 1', production2: '🔵 Производство 2', production3: '🟣 Производство 3' };
-    var PRODUCTION_COLORS = { production1: '#4caf50', production2: '#3498db', production3: '#9b59b6' };
-    var PRODUCTION_CLASSES = { production1: 'prod1', production2: 'prod2', production3: 'prod3' };
+    // ===== СИСТЕМА ЛОГИРОВАНИЯ =====
+    var debugConsoleOpen = false, debugLogs = [], MAX_DEBUG_LOGS = 200;
+    function debugLog(level, message, data) { var timestamp = new Date().toLocaleTimeString('ru-RU'); var logEntry = { time: timestamp, level: level, message: message, data: data }; debugLogs.push(logEntry); if (debugLogs.length > MAX_DEBUG_LOGS) debugLogs.shift(); var consoleMsg = '[' + timestamp + '] ' + message; if (level === 'error') console.error(consoleMsg, data || ''); else if (level === 'warn') console.warn(consoleMsg, data || ''); else console.log(consoleMsg, data || ''); updateDebugOutput(); }
+    function updateDebugOutput() { var output = document.getElementById('debugOutput'); if (!output) return; output.innerHTML = debugLogs.map(function(log) { var cssClass = 'log-' + log.level; var text = '[' + log.time + '] ' + log.message; if (log.data !== undefined) text += ' ' + JSON.stringify(log.data); return '<div class="' + cssClass + '">' + text + '</div>'; }).join(''); output.scrollTop = output.scrollHeight; }
+    function toggleDebugConsole() { debugConsoleOpen = !debugConsoleOpen; var el = document.getElementById('debugConsole'); if (debugConsoleOpen) { el.classList.add('show'); updateDebugOutput(); } else { el.classList.remove('show'); } }
+    function clearDebugConsole() { debugLogs = []; updateDebugOutput(); }
 
     // ===== TELEGRAM =====
     var TG_TOKEN = '8857489865:AAHYnkYZR1sP5tSudv_sPGUsDT3yEOtZxtY';
-    var TG_CHAT_ID = '432780663'; var TG_GROUP_ID = '-5124511213'; var TG_ENABLED = true;
-    function sendTelegram(m) { if (!TG_ENABLED || !TG_TOKEN) return; var ids = [TG_CHAT_ID]; if (TG_GROUP_ID) ids.push(TG_GROUP_ID); ids.forEach(function(id) { fetch('https://api.telegram.org/bot' + TG_TOKEN + '/sendMessage', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'chat_id=' + id + '&text=' + encodeURIComponent(m) + '&parse_mode=HTML' }).catch(function(e) {}); }); }
-    function sendDailyTelegramReport() {
-        var prod = getCurrentProductionData(); var cs = [];
-        for (var i in prod.data.supplies) { var v = prod.data.supplies[i], mn = prod.limits[i] || 0; if (mn > 0 && v <= mn) cs.push('🔴 ' + i + ': ' + v + ' ед. (мин: ' + mn + ')'); }
-        var pt = prod.goals.total || 100, pk = prod.goalPacked.black + prod.goalPacked.white, pc = pt > 0 ? Math.round((pk / pt) * 100) : 0, dn = pk >= pt;
-        var msg = '<b>📅 ЕЖЕДНЕВНЫЙ ОТЧЁТ — ' + PRODUCTION_NAMES[currentProduction] + '</b>\nДата: ' + new Date().toLocaleDateString('ru-RU') + '\n\n';
-        msg += cs.length > 0 ? '<b>⚠️ Критические запасы:</b>\n' + cs.join('\n') + '\n\n' : '<b>✅ Критических запасов нет</b>\n\n';
-        msg += '<b>🎯 Цель:</b>\nПлан: ' + pt + ' рамок\nУпаковано: ' + pk + ' (' + pc + '%)\n' + (dn ? '✅ План ВЫПОЛНЕН!' : '❌ План НЕ ВЫПОЛНЕН (осталось: ' + (pt - pk) + ')');
-        sendTelegram(msg);
+    var TG_CHAT_ID = '432780663';
+    var TG_GROUP_ID = '-5124511213';
+    function sendTelegram(message) { if (!TG_TOKEN) return; var ids = [TG_CHAT_ID]; if (TG_GROUP_ID) ids.push(TG_GROUP_ID); ids.forEach(function(chatId) { fetch('https://api.telegram.org/bot' + TG_TOKEN + '/sendMessage', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'chat_id=' + chatId + '&text=' + encodeURIComponent(message) + '&parse_mode=HTML' }).catch(function(e) { console.log('TG error:', e); }); }); }
+    function testTelegramReport() { sendDailyTelegramReport(); showToast('✅ Тестовый отчёт отправлен в Telegram'); }
+    function sendDailyTelegramReport() { var criticalSupplies = []; for (var item in productionData.supplies) { var val = productionData.supplies[item]; var min = minLimits[item] || 0; if (min > 0 && val <= min) criticalSupplies.push('🔴 ' + item + ': ' + val + ' ед. (мин: ' + min + ')'); } var planTotal = dailyGoals.total || 100; var packedToday = goalPacked.black + goalPacked.white; var planPercent = planTotal > 0 ? Math.round((packedToday / planTotal) * 100) : 0; var planDone = packedToday >= planTotal; var msg = '<b>📅 ЕЖЕДНЕВНЫЙ ОТЧЁТ</b>\nДата: ' + new Date().toLocaleDateString('ru-RU') + '\n\n'; if (criticalSupplies.length > 0) { msg += '<b>⚠️ Критические запасы (Отдел 1):</b>\n' + criticalSupplies.join('\n') + '\n\n'; } else { msg += '<b>✅ Критических запасов нет</b>\n\n'; } msg += '<b>🎯 Цель на день:</b>\nПлан: ' + planTotal + ' рамок\nУпаковано: ' + packedToday + ' рамок (' + planPercent + '%)\n'; msg += planDone ? '✅ План ВЫПОЛНЕН!' : '❌ План НЕ ВЫПОЛНЕН (осталось: ' + (planTotal - packedToday) + ')'; sendTelegram(msg); }
+
+    // ===== КОНФИГУРАЦИЯ =====
+    var USER_PASSWORD = '0000';
+    var ADMIN_PASSWORD = '9999';
+    var USER_LIST = ['Илья', 'Глеб', 'Артур', 'Наём. Раб.'];
+    var USER_COLORS = { 'Админ': '#e74c3c', 'Илья': '#3498db', 'Глеб': '#e67e22', 'Артур': '#9b59b6', 'Наём. Раб.': '#95a5a6' };
+    var SECTION_NAMES = { supplies: '📦 Запасы', production: '⚙️ Производство', assembly: '🔧 Сборка' };
+    var PRODUCTION_COLORS = { 'Производство 1': '#3498db', 'Производство 2': '#e67e22', 'Производство 3': '#2ecc71' };
+
+    // ===== СОСТОЯНИЕ =====
+    var currentUser = null;
+    var isAdmin = false;
+    var ilyaAdminMode = false;
+    var currentProduction = 'Производство 1';
+    var productionList = ['Производство 1', 'Производство 2', 'Производство 3'];
+    var productionStructures = JSON.parse(localStorage.getItem('ps') || '{}');
+    var productionData = { supplies: {}, production: {}, assembly: {} };
+    var minLimits = {};
+    var changeHistory = [];
+    var notes = [];
+    var dailyGoals = { total: 100 };
+    var packedHistory = {};
+    var goalPacked = { black: 0, white: 0, date: '', startBlack: 0, startWhite: 0 };
+    var groupOrder = {};
+    var darkMode = false;
+    var showLimitsPanel = false, pinboardOpen = true, alertsOpen = true;
+    var lastTelegramReport = '';
+
+    // Инициализация структур по умолчанию
+    function getDefaultStructure() {
+        return {
+            supplies: { groups: { 'Скотч': ['Скотч желтый', 'Скотч прозрачный'], 'Крючки': ['Крючки черные', 'Крючки белые'], 'Клей': ['Клей ПВА', 'Клей гель'], 'Рамки': ['Рамки черные', 'Рамки белые'] }, singles: ['Стрэйтч', 'Пластик белый', 'Коробки', 'Грунт', 'Пупырка', 'Оргстекло', 'Доски'] },
+            production: { groups: {}, singles: ['Пластик нарезанный', 'Сушка грунта', 'Сушка полей', 'Готовые рамки', 'Кривые'] },
+            assembly: { groups: { 'Непроверенные': ['Непроверенные черные', 'Непроверенные белые'], 'Проверенные': ['Проверенные черные', 'Проверенные белые'], 'Упакованные': ['Упакованные черные', 'Упакованные белые'], 'Отдано': ['Отдано черные', 'Отдано белые'] }, singles: [] }
+        };
     }
-    function testTelegramReport() { if (!isAdmin) return; if (!confirm('Отправить тестовый отчёт в Telegram?')) return; sendDailyTelegramReport(); showToast('✅ Тестовый отчёт отправлен'); }
-    function updateTelegramButton() { var b = document.getElementById('tgTestBtn'); isAdmin ? b.classList.add('visible') : b.classList.remove('visible'); }
+    function getDefaultGroupOrder() { return { supplies: ['Скотч', 'Крючки', 'Клей', 'Рамки'], production: [], assembly: ['Непроверенные', 'Проверенные', 'Упакованные', 'Отдано'] }; }
 
-    // ===== ДАННЫЕ =====
-    var currentProduction = localStorage.getItem('currentProduction') || 'production1';
-    var allProductions = {};
-    function initAllProductions() { ['production1', 'production2', 'production3'].forEach(function(k) { var s = localStorage.getItem(k + '_data'); allProductions[k] = s ? JSON.parse(s) : createEmptyProduction(); }); }
-    function createEmptyProduction() { var d = buildDefaultData(); var l = {}; for (var c in d) for (var i in d[c]) l[i] = 1; return { data: d, limits: l, history: [], notes: [], goals: { total: 100 }, packedHistory: {}, goalPacked: { black: 0, white: 0, date: '', startBlack: 0, startWhite: 0 } }; }
-    function getCurrentProductionData() { if (!allProductions[currentProduction]) allProductions[currentProduction] = createEmptyProduction(); return allProductions[currentProduction]; }
-    function saveCurrentProduction() { localStorage.setItem(currentProduction + '_data', JSON.stringify(getCurrentProductionData())); localStorage.setItem('currentProduction', currentProduction); localStorage.setItem('categoryStructure', JSON.stringify(CATEGORY_STRUCTURE)); localStorage.setItem('groupOrder', JSON.stringify(GROUP_ORDER)); }
+    // ===== ЗАГРУЗКА ДАННЫХ ИЗ FIREBASE =====
+    async function loadFromFirebase() {
+        if (!currentUser) return;
+        var key = currentProduction;
+        try {
+            var doc = await db.collection('productions').doc(key).get();
+            if (doc.exists) {
+                var d = doc.data();
+                productionData = d.productionData || { supplies: {}, production: {}, assembly: {} };
+                minLimits = d.minLimits || {};
+                changeHistory = d.changeHistory || [];
+                notes = d.notes || [];
+                dailyGoals = d.dailyGoals || { total: 100 };
+                packedHistory = d.packedHistory || {};
+                goalPacked = d.goalPacked || { black: 0, white: 0, date: '', startBlack: 0, startWhite: 0 };
+                if (d.structure) productionStructures[key] = d.structure;
+                if (d.groupOrder) groupOrder = d.groupOrder;
+                else groupOrder = getDefaultGroupOrder();
+            } else {
+                resetProductionData();
+            }
+            if (!productionStructures[key]) productionStructures[key] = getDefaultStructure();
+            if (!groupOrder || Object.keys(groupOrder).length === 0) groupOrder = getDefaultGroupOrder();
+        } catch(e) {
+            console.error('Firebase load error:', e);
+            loadFromLocalStorage();
+        }
+        renderAll();
+        updateStats();
+        renderNotes();
+        renderGoals();
+    }
 
-    // ===== СТРУКТУРА =====
-    var CATEGORY_STRUCTURE = JSON.parse(localStorage.getItem('categoryStructure') || JSON.stringify({ supplies: { groups: { 'Скотч': ['Скотч желтый', 'Скотч прозрачный'], 'Крючки': ['Крючки черные', 'Крючки белые'], 'Клей': ['Клей ПВА', 'Клей гель'], 'Рамки': ['Рамки черные', 'Рамки белые'] }, singles: ['Стрэйтч', 'Пластик белый', 'Коробки', 'Грунт', 'Пупырка', 'Оргстекло', 'Доски'] }, production: { groups: {}, singles: ['Пластик нарезанный', 'Сушка грунта', 'Сушка полей', 'Готовые рамки', 'Кривые'] }, assembly: { groups: { 'Непроверенные': ['Непроверенные черные', 'Непроверенные белые'], 'Проверенные': ['Проверенные черные', 'Проверенные белые'], 'Упакованные': ['Упакованные черные', 'Упакованные белые'], 'Отдано': ['Отдано черные', 'Отдано белые'] }, singles: [] } }));
-    var GROUP_ORDER = JSON.parse(localStorage.getItem('groupOrder') || JSON.stringify({ supplies: ['Скотч', 'Крючки', 'Клей', 'Рамки'], production: [], assembly: ['Непроверенные', 'Проверенные', 'Упакованные', 'Отдано'] }));
-    function buildDefaultData() { var d = { supplies: {}, production: {}, assembly: {} }; for (var c in CATEGORY_STRUCTURE) { var s = CATEGORY_STRUCTURE[c]; for (var g in s.groups) { s.groups[g].forEach(function(i) { d[c][i] = 1; }); } s.singles.forEach(function(i) { d[c][i] = 1; }); } return d; }
+    function loadFromLocalStorage() {
+        var key = currentProduction;
+        var saved = JSON.parse(localStorage.getItem('prod_' + key) || '{}');
+        productionData = saved.productionData || { supplies: {}, production: {}, assembly: {} };
+        minLimits = saved.minLimits || {};
+        changeHistory = saved.changeHistory || [];
+        notes = saved.notes || [];
+        dailyGoals = saved.dailyGoals || { total: 100 };
+        packedHistory = saved.packedHistory || {};
+        goalPacked = saved.goalPacked || { black: 0, white: 0, date: '', startBlack: 0, startWhite: 0 };
+        if (!productionStructures[key]) productionStructures[key] = getDefaultStructure();
+        groupOrder = saved.groupOrder || getDefaultGroupOrder();
+    }
 
-    var darkMode = JSON.parse(localStorage.getItem('darkMode') || 'false');
-    var currentUser = localStorage.getItem('currentUser') || null;
-    var isAdmin = currentUser === 'Админ';
-    var showLimitsPanel = false, pinboardOpen = true, alertsOpen = true, isFirstSync = true;
-    var syncTimer = null, isOnline = navigator.onLine;
-    var lastTelegramReport = localStorage.getItem('lastTelegramReport') || '';
-    var structureSynced = true;
+    async function saveToFirebase() {
+        if (!currentUser) return;
+        var key = currentProduction;
+        var payload = {
+            productionData: productionData,
+            minLimits: minLimits,
+            changeHistory: changeHistory.slice(0, 100),
+            notes: notes,
+            dailyGoals: dailyGoals,
+            packedHistory: packedHistory,
+            goalPacked: goalPacked,
+            structure: productionStructures[key],
+            groupOrder: groupOrder,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+        try {
+            await db.collection('productions').doc(key).set(payload);
+        } catch(e) {
+            console.error('Firebase save error:', e);
+            saveToLocalStorage();
+        }
+        saveToLocalStorage();
+    }
 
-    initAllProductions();
+    function saveToLocalStorage() {
+        var key = currentProduction;
+        localStorage.setItem('prod_' + key, JSON.stringify({
+            productionData: productionData, minLimits: minLimits,
+            changeHistory: changeHistory, notes: notes,
+            dailyGoals: dailyGoals, packedHistory: packedHistory,
+            goalPacked: goalPacked, groupOrder: groupOrder
+        }));
+        localStorage.setItem('ps', JSON.stringify(productionStructures));
+        localStorage.setItem('pl', JSON.stringify(productionList));
+    }
 
-    // ===== UI =====
+    function resetProductionData() {
+        var structure = productionStructures[currentProduction] || getDefaultStructure();
+        productionData = { supplies: {}, production: {}, assembly: {} };
+        for (var cat in structure) {
+            if (!productionData[cat]) productionData[cat] = {};
+            var st = structure[cat];
+            for (var g in st.groups) { st.groups[g].forEach(function(item) { productionData[cat][item] = 1; }); }
+            st.singles.forEach(function(item) { productionData[cat][item] = 1; });
+        }
+        minLimits = {};
+        for (var c in productionData) for (var i in productionData[c]) minLimits[i] = 1;
+        changeHistory = [];
+        notes = [];
+        dailyGoals = { total: 100 };
+        packedHistory = {};
+        goalPacked = { black: 0, white: 0, date: '', startBlack: 0, startWhite: 0 };
+        groupOrder = getDefaultGroupOrder();
+    }
+
+    // ===== СОХРАНЕНИЕ =====
+    function saveAllData() {
+        var structure = productionStructures[currentProduction] || getDefaultStructure();
+        for (var cat in structure) {
+            if (!productionData[cat]) productionData[cat] = {};
+            var st = structure[cat];
+            for (var g in st.groups) { st.groups[g].forEach(function(item) { if (productionData[cat][item] === undefined) productionData[cat][item] = 1; }); }
+            st.singles.forEach(function(item) { if (productionData[cat][item] === undefined) productionData[cat][item] = 1; });
+        }
+        for (var cat in productionData) { for (var item in productionData[cat]) { if (minLimits[item] === undefined) minLimits[item] = 1; } }
+        saveToFirebase();
+        showToast('✓ Сохранено');
+    }
     function showToast(m) { var t = document.getElementById('toast'); t.textContent = m; t.style.display = 'block'; setTimeout(function() { t.style.display = 'none'; }, 1500); }
     function updateSyncStatus(c, m) { var e = document.getElementById('syncStatus'); e.className = 'sync ' + c; e.innerHTML = m; }
-    function updateSyncIndicator() { var i = document.getElementById('syncIndicator'), s = document.getElementById('syncStatusText'); if (structureSynced) { i.className = 'sync-indicator synced'; s.textContent = '✅ Структура синхронизирована'; } else { i.className = 'sync-indicator not-synced'; s.textContent = '⚠️ Изменения не синхронизированы. Нажмите 🔄'; } }
 
-    // ===== ВЫБОР ПРОИЗВОДСТВА =====
-    function switchProductionScreen() { document.getElementById('authOverlay').classList.remove('hidden'); document.getElementById('appContainer').style.display = 'none'; showProductionSelect(); }
-    function showProductionSelect() { var h = '<h2>🏭 Выберите производство</h2>'; ['production1', 'production2', 'production3'].forEach(function(k) { var p = allProductions[k] || createEmptyProduction(); var sh = (p.data.assembly && p.data.assembly['Отдано черные'] || 0) + (p.data.assembly && p.data.assembly['Отдано белые'] || 0); var pk = p.goalPacked.black + p.goalPacked.white; h += '<button class="production-btn ' + PRODUCTION_CLASSES[k] + '" onclick="selectProduction(\'' + k + '\')"><span class="prod-name">' + PRODUCTION_NAMES[k] + '</span><div class="prod-info">Отгружено: ' + sh + ' | Упаковано сегодня: ' + pk + '</div></button>'; }); document.getElementById('authCard').innerHTML = h; }
-    function selectProduction(k) { currentProduction = k; saveCurrentProduction(); showApp(); }
-    function updateProductionUI() { var h = document.getElementById('mainHeader'); h.className = 'header ' + PRODUCTION_CLASSES[currentProduction]; var b = document.getElementById('prodBadge'); b.textContent = PRODUCTION_NAMES[currentProduction]; b.className = 'prod-badge ' + PRODUCTION_CLASSES[currentProduction]; updateTelegramButton(); updateSyncIndicator(); }
+    // ===== АДМИН: ПРОИЗВОДСТВА =====
+    function adminAddProduction() { if (!isAdmin) return; var name = document.getElementById('newProdName').value.trim(); if (!name) return showToast('Введите название'); if (productionList.indexOf(name) !== -1) return showToast('Такое производство уже есть'); if (!PRODUCTION_COLORS[name]) PRODUCTION_COLORS[name] = '#' + Math.floor(Math.random()*16777215).toString(16); productionList.push(name); productionStructures[name] = getDefaultStructure(); document.getElementById('newProdName').value = ''; saveToLocalStorage(); renderProductionSelects(); showToast('✅ Производство добавлено: ' + name); }
+    function adminRenameProduction() { if (!isAdmin) return; var oldName = document.getElementById('renameProdSelect').value; var newName = document.getElementById('renameProdInput').value.trim(); if (!oldName || !newName) return showToast('Выберите производство и введите новое название'); if (productionList.indexOf(newName) !== -1 && newName !== oldName) return showToast('Такое название уже занято'); var idx = productionList.indexOf(oldName); if (idx !== -1) productionList[idx] = newName; if (productionStructures[oldName]) { productionStructures[newName] = productionStructures[oldName]; delete productionStructures[oldName]; } if (PRODUCTION_COLORS[oldName]) { PRODUCTION_COLORS[newName] = PRODUCTION_COLORS[oldName]; delete PRODUCTION_COLORS[oldName]; } if (currentProduction === oldName) currentProduction = newName; document.getElementById('renameProdInput').value = ''; saveToLocalStorage(); renderProductionSelects(); updateProductionUI(); loadFromFirebase(); showToast('✅ Переименовано: ' + oldName + ' → ' + newName); }
+    function renderProductionSelects() { var sel = document.getElementById('renameProdSelect'); sel.innerHTML = productionList.map(function(p) { return '<option value="' + p + '">' + p + '</option>'; }).join(''); }
 
-    // ===== КОПИРОВАНИЕ СТРУКТУРЫ =====
-    function copyStructure() { if (!isAdmin) return; var f = document.getElementById('copyFrom').value, t = document.getElementById('copyTo').value; if (f === t) return showToast('❌ Выберите разные производства'); if (!confirm('Копировать ВСЕ данные из «' + PRODUCTION_NAMES[f] + '» в «' + PRODUCTION_NAMES[t] + '»?')) return; allProductions[t] = JSON.parse(JSON.stringify(allProductions[f])); saveCurrentProduction(); showToast('✅ Структура скопирована'); structureSynced = false; updateSyncIndicator(); }
-
-    // ===== АДМИН DRAG & DROP =====
+    // ===== АДМИН: СТРУКТУРА =====
     var draggedElement = null;
-    function renderDraggableList() { var c = document.getElementById('orderCategory').value; var s = CATEGORY_STRUCTURE[c]; if (!s) return; var o = GROUP_ORDER[c] || [], l = document.getElementById('draggableList'), h = '', sg = {}; o.forEach(function(g) { if (s.groups[g]) { sg[g] = true; h += '<div class="draggable-item group-header" draggable="true" data-type="group" data-group="' + g + '" ondragstart="dragStart(event)" ondragend="dragEnd(event)" ondragover="dragOver(event)" ondrop="drop(event)"><span class="drag-handle">☰</span> 📁 <span class="item-text">' + g + '</span><small>(' + s.groups[g].join(', ') + ')</small></div>'; s.groups[g].forEach(function(i) { h += '<div class="draggable-item sub-item" draggable="true" data-type="sub" data-group="' + g + '" data-item="' + i + '" ondragstart="dragStart(event)" ondragend="dragEnd(event)" ondragover="dragOver(event)" ondrop="drop(event)"><span class="drag-handle">⋮</span> ' + i + '</div>'; }); } }); for (var g in s.groups) { if (!sg[g]) { h += '<div class="draggable-item group-header" draggable="true" data-type="group" data-group="' + g + '" ondragstart="dragStart(event)" ondragend="dragEnd(event)" ondragover="dragOver(event)" ondrop="drop(event)"><span class="drag-handle">☰</span> 📁 <span class="item-text">' + g + '</span><small>(' + s.groups[g].join(', ') + ')</small></div>'; s.groups[g].forEach(function(i) { h += '<div class="draggable-item sub-item" draggable="true" data-type="sub" data-group="' + g + '" data-item="' + i + '" ondragstart="dragStart(event)" ondragend="dragEnd(event)" ondragover="dragOver(event)" ondrop="drop(event)"><span class="drag-handle">⋮</span> ' + i + '</div>'; }); } } if (s.singles.length > 0) { h += '<div class="draggable-item group-header" style="cursor:default;border-color:var(--brd2)">📋 Одиночные</div>'; s.singles.forEach(function(i) { h += '<div class="draggable-item" draggable="true" data-type="single" data-item="' + i + '" ondragstart="dragStart(event)" ondragend="dragEnd(event)" ondragover="dragOver(event)" ondrop="drop(event)"><span class="drag-handle">⋮</span> ' + i + '</div>'; }); } l.innerHTML = h || '<p>Нет элементов</p>'; }
-    function dragStart(e) { draggedElement = e.target; e.target.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', ''); }
-    function dragEnd(e) { e.target.classList.remove('dragging'); document.querySelectorAll('.drag-over').forEach(function(el) { el.classList.remove('drag-over'); }); draggedElement = null; }
-    function dragOver(e) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; if (e.target.closest('.draggable-item')) e.target.closest('.draggable-item').classList.add('drag-over'); }
-    function drop(e) { e.preventDefault(); document.querySelectorAll('.drag-over').forEach(function(el) { el.classList.remove('drag-over'); }); var t = e.target.closest('.draggable-item'); if (!t || !draggedElement || t === draggedElement) return; t.parentNode.insertBefore(draggedElement, t.nextSibling === draggedElement ? t : t.nextSibling); }
-    function saveOrder() { var c = document.getElementById('orderCategory').value; var items = document.querySelectorAll('#draggableList .draggable-item'), no = [], ns = [], ss = {}; items.forEach(function(el) { var tp = el.dataset.type; if (tp === 'group') { var gn = el.dataset.group; if (gn && no.indexOf(gn) === -1) no.push(gn); } else if (tp === 'single') { var it = el.dataset.item; if (it && !ss[it]) { ss[it] = true; ns.push(it); } } }); GROUP_ORDER[c] = no; if (ns.length > 0 && CATEGORY_STRUCTURE[c]) { var cur = CATEGORY_STRUCTURE[c].singles; ns.forEach(function(i) { if (cur.indexOf(i) === -1) cur.push(i); }); var flt = cur.filter(function(i) { return ns.indexOf(i) !== -1; }); cur.forEach(function(i) { if (flt.indexOf(i) === -1) flt.push(i); }); CATEGORY_STRUCTURE[c].singles = flt; } saveCurrentProduction(); renderAll(); renderDraggableList(); renderAdminItemList(); updateAdminGroupSelect(); structureSynced = false; updateSyncIndicator(); showToast('✅ Порядок сохранён'); }
-    function updateRenameSelects() { var c = document.getElementById('renameCategory').value, s = CATEGORY_STRUCTURE[c], sel = document.getElementById('renameItem'); sel.innerHTML = '<option value="">Выберите...</option>'; if (!s) return; for (var g in s.groups) { s.groups[g].forEach(function(i) { sel.innerHTML += '<option value="' + i + '">' + i + ' [' + g + ']</option>'; }); } s.singles.forEach(function(i) { sel.innerHTML += '<option value="' + i + '">' + i + '</option>'; }); }
-    function adminRenameItem() { if (!isAdmin) return; var c = document.getElementById('renameCategory').value, o = document.getElementById('renameItem').value, n = document.getElementById('renameNewName').value.trim(); if (!o || !n || o === n) return showToast('❌ Проверьте данные'); var s = CATEGORY_STRUCTURE[c], f = false; for (var g in s.groups) { var idx = s.groups[g].indexOf(o); if (idx !== -1) { s.groups[g][idx] = n; f = true; break; } } if (!f) { var idx = s.singles.indexOf(o); if (idx !== -1) { s.singles[idx] = n; f = true; } } if (!f) return showToast('❌ Не найдено'); var prod = getCurrentProductionData(); if (prod.data[c] && prod.data[c][o] !== undefined) { prod.data[c][n] = prod.data[c][o]; delete prod.data[c][o]; } if (prod.limits[o] !== undefined) { prod.limits[n] = prod.limits[o]; delete prod.limits[o]; } prod.history.forEach(function(h) { if (h.item === o) h.item = n; }); document.getElementById('renameNewName').value = ''; saveCurrentProduction(); renderAll(); renderAdminItemList(); updateRenameSelects(); updateAdminGroupSelect(); renderDraggableList(); structureSynced = false; updateSyncIndicator(); showToast('✅ Переименовано: ' + o + ' → ' + n); }
-    function updateAdminGroupSelect() { var c = document.getElementById('adminCategory').value, sel = document.getElementById('adminGroup'); sel.innerHTML = '<option value="">Без группы</option>'; var s = CATEGORY_STRUCTURE[c]; if (s && s.groups) for (var g in s.groups) sel.innerHTML += '<option value="' + g + '">' + g + '</option>'; }
-    function adminAddItem() { if (!isAdmin) return; var c = document.getElementById('adminCategory').value, g = document.getElementById('adminGroup').value, n = document.getElementById('adminItemName').value.trim(), v = parseInt(document.getElementById('adminItemValue').value) || 1; if (!n) return showToast('Введите название'); var s = CATEGORY_STRUCTURE[c]; if (!s) return; if (g) { if (!s.groups[g]) s.groups[g] = []; if (s.groups[g].indexOf(n) === -1) s.groups[g].push(n); if (GROUP_ORDER[c] && GROUP_ORDER[c].indexOf(g) === -1) GROUP_ORDER[c].push(g); } else { if (s.singles.indexOf(n) === -1) s.singles.push(n); } var prod = getCurrentProductionData(); if (!prod.data[c]) prod.data[c] = {}; prod.data[c][n] = v; prod.limits[n] = 1; document.getElementById('adminItemName').value = ''; saveCurrentProduction(); renderAll(); renderAdminItemList(); updateAdminGroupSelect(); renderDraggableList(); structureSynced = false; updateSyncIndicator(); showToast('✅ Добавлено: ' + n); }
-    function adminAddGroup() { if (!isAdmin) return; var c = document.getElementById('adminGroupCategory').value, gn = document.getElementById('adminGroupName').value.trim(), s1 = document.getElementById('adminSubItem1').value.trim(), s2 = document.getElementById('adminSubItem2').value.trim(); if (!gn) return showToast('Введите название группы'); var s = CATEGORY_STRUCTURE[c]; if (!s) return; if (!s.groups[gn]) s.groups[gn] = []; var prod = getCurrentProductionData(); if (!prod.data[c]) prod.data[c] = {}; if (s1 && s.groups[gn].indexOf(s1) === -1) { s.groups[gn].push(s1); prod.data[c][s1] = 1; prod.limits[s1] = 1; } if (s2 && s.groups[gn].indexOf(s2) === -1) { s.groups[gn].push(s2); prod.data[c][s2] = 1; prod.limits[s2] = 1; } if (GROUP_ORDER[c] && GROUP_ORDER[c].indexOf(gn) === -1) GROUP_ORDER[c].push(gn); document.getElementById('adminGroupName').value = ''; document.getElementById('adminSubItem1').value = ''; document.getElementById('adminSubItem2').value = ''; saveCurrentProduction(); renderAll(); renderAdminItemList(); updateAdminGroupSelect(); renderDraggableList(); structureSynced = false; updateSyncIndicator(); showToast('✅ Группа создана: ' + gn); }
-    function adminDeleteItem(c, i) { if (!isAdmin) return; if (!confirm('Удалить «' + i + '»?')) return; var s = CATEGORY_STRUCTURE[c]; if (!s) return; for (var g in s.groups) { var idx = s.groups[g].indexOf(i); if (idx !== -1) { s.groups[g].splice(idx, 1); if (s.groups[g].length === 0) delete s.groups[g]; } } var si = s.singles.indexOf(i); if (si !== -1) s.singles.splice(si, 1); var prod = getCurrentProductionData(); if (prod.data[c]) delete prod.data[c][i]; delete prod.limits[i]; saveCurrentProduction(); renderAll(); renderAdminItemList(); updateAdminGroupSelect(); renderDraggableList(); structureSynced = false; updateSyncIndicator(); showToast('🗑️ Удалено: ' + i); }
-    function renderAdminItemList() { var l = document.getElementById('adminItemList'), h = ''; for (var c in CATEGORY_STRUCTURE) { var s = CATEGORY_STRUCTURE[c], cn = SECTION_NAMES[c] || c, o = GROUP_ORDER[c] || [], sg = {}; o.forEach(function(g) { if (s.groups[g]) { sg[g] = true; h += '<div style="grid-column:1/-1;font-weight:600;color:var(--txt2);margin-top:10px">' + cn + ' → ' + g + ':</div>'; s.groups[g].forEach(function(i) { h += '<div class="admin-item-card"><div class="item-info"><strong>' + i + '</strong></div><button class="btn btn-delete" onclick="adminDeleteItem(\'' + c + '\',\'' + i + '\')">✕</button></div>'; }); } }); for (var g in s.groups) { if (!sg[g]) { h += '<div style="grid-column:1/-1;font-weight:600;color:var(--txt2);margin-top:10px">' + cn + ' → ' + g + ':</div>'; s.groups[g].forEach(function(i) { h += '<div class="admin-item-card"><div class="item-info"><strong>' + i + '</strong></div><button class="btn btn-delete" onclick="adminDeleteItem(\'' + c + '\',\'' + i + '\')">✕</button></div>'; }); } } if (s.singles.length > 0) { h += '<div style="grid-column:1/-1;font-weight:600;color:var(--txt2);margin-top:10px">' + cn + ' (одиночные):</div>'; s.singles.forEach(function(i) { h += '<div class="admin-item-card"><div class="item-info"><strong>' + i + '</strong></div><button class="btn btn-delete" onclick="adminDeleteItem(\'' + c + '\',\'' + i + '\')">✕</button></div>'; }); } } l.innerHTML = h || '<p>Нет элементов</p>'; }
+    function getStructure() { return productionStructures[currentProduction] || getDefaultStructure(); }
+    function renderDraggableList() { var category = document.getElementById('orderCategory').value; var struct = getStructure()[category]; if (!struct) return; var order = groupOrder[category] || []; var list = document.getElementById('draggableList'), html = '', shownG = {}; order.forEach(function(gn) { if (struct.groups[gn]) { shownG[gn] = true; html += '<div class="draggable-item group-header" draggable="true" data-type="group" data-group="' + gn + '"><span class="drag-handle">☰</span> 📁 <span class="item-text">' + gn + '</span><small>(' + struct.groups[gn].join(', ') + ')</small></div>'; struct.groups[gn].forEach(function(item) { html += '<div class="draggable-item sub-item" draggable="true" data-type="sub" data-group="' + gn + '" data-item="' + item + '"><span class="drag-handle">⋮</span> <span class="item-text">' + item + '</span></div>'; }); } }); for (var gn in struct.groups) { if (!shownG[gn]) { html += '<div class="draggable-item group-header" draggable="true" data-type="group" data-group="' + gn + '"><span class="drag-handle">☰</span> 📁 <span class="item-text">' + gn + '</span><small>(' + struct.groups[gn].join(', ') + ')</small></div>'; struct.groups[gn].forEach(function(item) { html += '<div class="draggable-item sub-item" draggable="true" data-type="sub" data-group="' + gn + '" data-item="' + item + '"><span class="drag-handle">⋮</span> <span class="item-text">' + item + '</span></div>'; }); } } if (struct.singles.length > 0) { html += '<div class="draggable-item group-header" style="cursor:default;border-color:var(--brd2)">📋 Одиночные</div>'; struct.singles.forEach(function(item) { html += '<div class="draggable-item" draggable="true" data-type="single" data-item="' + item + '"><span class="drag-handle">⋮</span> <span class="item-text">' + item + '</span></div>'; }); } if (!html) html = '<p>Нет элементов</p>'; list.innerHTML = html; }
+    function saveOrder() { var category = document.getElementById('orderCategory').value; var items = document.querySelectorAll('#draggableList .draggable-item'), newOrder = [], newSingles = []; items.forEach(function(el) { var type = el.dataset.type; if (type === 'group') { var gn = el.dataset.group; if (gn && newOrder.indexOf(gn) === -1) newOrder.push(gn); } else if (type === 'single') { var item = el.dataset.item; if (item && newSingles.indexOf(item) === -1) newSingles.push(item); } }); groupOrder[category] = newOrder; var struct = getStructure(); if (struct && struct[category] && newSingles.length > 0) struct[category].singles = newSingles; saveAllData(); renderAll(); renderDraggableList(); showToast('✅ Порядок сохранён'); }
+    function updateRenameSelects() { var cat = document.getElementById('renameCategory').value; var struct = getStructure()[cat]; var sel = document.getElementById('renameItem'); sel.innerHTML = '<option value="">Выберите элемент...</option>'; if (!struct) return; for (var g in struct.groups) { struct.groups[g].forEach(function(item) { sel.innerHTML += '<option value="' + item + '">' + item + ' [' + g + ']</option>'; }); } struct.singles.forEach(function(item) { sel.innerHTML += '<option value="' + item + '">' + item + '</option>'; }); }
+    function adminRenameItem() { if (!isAdmin) return; var cat = document.getElementById('renameCategory').value, oldName = document.getElementById('renameItem').value, newName = document.getElementById('renameNewName').value.trim(); if (!oldName || !newName || oldName === newName) return showToast('Ошибка'); var struct = getStructure()[cat]; var found = false; for (var g in struct.groups) { var idx = struct.groups[g].indexOf(oldName); if (idx !== -1) { struct.groups[g][idx] = newName; found = true; break; } } if (!found) { var idx = struct.singles.indexOf(oldName); if (idx !== -1) { struct.singles[idx] = newName; found = true; } } if (!found) return showToast('Элемент не найден'); if (productionData[cat] && productionData[cat][oldName] !== undefined) { productionData[cat][newName] = productionData[cat][oldName]; delete productionData[cat][oldName]; } if (minLimits[oldName] !== undefined) { minLimits[newName] = minLimits[oldName]; delete minLimits[oldName]; } changeHistory.forEach(function(h) { if (h.item === oldName) h.item = newName; }); document.getElementById('renameNewName').value = ''; saveAllData(); renderAll(); renderAdminItemList(); updateRenameSelects(); showToast('✅ Переименовано'); }
+    function quickRename(cat, oldName) { if (!isAdmin) return; var newName = prompt('Новое название:', oldName); if (!newName || !newName.trim() || newName.trim() === oldName) return; document.getElementById('renameCategory').value = cat; document.getElementById('renameItem').value = oldName; document.getElementById('renameNewName').value = newName.trim(); adminRenameItem(); }
+    function updateAdminGroupSelect() { var cat = document.getElementById('adminCategory').value; var struct = getStructure()[cat]; var sel = document.getElementById('adminGroup'); sel.innerHTML = '<option value="">Без группы</option>'; if (struct) for (var g in struct.groups) sel.innerHTML += '<option value="' + g + '">' + g + '</option>'; }
+    function adminAddItem() { if (!isAdmin) return; var cat = document.getElementById('adminCategory').value, group = document.getElementById('adminGroup').value, name = document.getElementById('adminItemName').value.trim(), val = parseInt(document.getElementById('adminItemValue').value) || 1; if (!name) return showToast('Введите название'); var struct = getStructure()[cat]; if (!struct) return; if (group) { if (!struct.groups[group]) struct.groups[group] = []; if (struct.groups[group].indexOf(name) === -1) struct.groups[group].push(name); if (!groupOrder[cat]) groupOrder[cat] = []; if (groupOrder[cat].indexOf(group) === -1) groupOrder[cat].push(group); } else { if (struct.singles.indexOf(name) === -1) struct.singles.push(name); } if (!productionData[cat]) productionData[cat] = {}; productionData[cat][name] = val; minLimits[name] = 1; document.getElementById('adminItemName').value = ''; saveAllData(); renderAll(); renderAdminItemList(); updateAdminGroupSelect(); renderDraggableList(); checkAlerts(); showToast('✅ Добавлено: ' + name); }
+    function adminAddGroup() { if (!isAdmin) return; var cat = document.getElementById('adminGroupCategory').value, gn = document.getElementById('adminGroupName').value.trim(), s1 = document.getElementById('adminSubItem1').value.trim(), s2 = document.getElementById('adminSubItem2').value.trim(); if (!gn) return showToast('Введите название группы'); if (!s1 && !s2) return showToast('Добавьте хотя бы один элемент'); var struct = getStructure()[cat]; if (!struct) return; if (!struct.groups[gn]) struct.groups[gn] = []; if (!productionData[cat]) productionData[cat] = {}; if (s1 && struct.groups[gn].indexOf(s1) === -1) { struct.groups[gn].push(s1); productionData[cat][s1] = 1; minLimits[s1] = 1; } if (s2 && struct.groups[gn].indexOf(s2) === -1) { struct.groups[gn].push(s2); productionData[cat][s2] = 1; minLimits[s2] = 1; } if (!groupOrder[cat]) groupOrder[cat] = []; if (groupOrder[cat].indexOf(gn) === -1) groupOrder[cat].push(gn); document.getElementById('adminGroupName').value = ''; document.getElementById('adminSubItem1').value = ''; document.getElementById('adminSubItem2').value = ''; saveAllData(); renderAll(); renderAdminItemList(); updateAdminGroupSelect(); renderDraggableList(); checkAlerts(); showToast('✅ Группа создана: ' + gn); }
+    function adminDeleteItem(cat, item) { if (!isAdmin) return; if (!confirm('Удалить "' + item + '"?')) return; var struct = getStructure()[cat]; if (!struct) return; for (var g in struct.groups) { var idx = struct.groups[g].indexOf(item); if (idx !== -1) { struct.groups[g].splice(idx, 1); if (struct.groups[g].length === 0) delete struct.groups[g]; } } var si = struct.singles.indexOf(item); if (si !== -1) struct.singles.splice(si, 1); if (productionData[cat]) delete productionData[cat][item]; delete minLimits[item]; saveAllData(); renderAll(); renderAdminItemList(); updateAdminGroupSelect(); renderDraggableList(); checkAlerts(); showToast('🗑️ Удалено: ' + item); }
+    function renderAdminItemList() { var list = document.getElementById('adminItemList'), html = ''; var struct = getStructure(); for (var cat in struct) { var st = struct[cat], cn = SECTION_NAMES[cat] || cat, order = groupOrder[cat] || [], shownG = {}; order.forEach(function(gn) { if (st.groups[gn]) { shownG[gn] = true; html += '<div style="grid-column:1/-1;font-weight:600;color:var(--txt2);margin-top:10px">' + cn + ' → ' + gn + ':</div>'; st.groups[gn].forEach(function(item) { html += '<div class="admin-item-card"><div class="item-info"><strong>' + item + '</strong></div><button class="btn btn-delete" onclick="adminDeleteItem(\'' + cat + '\',\'' + item + '\')">✕</button></div>'; }); } }); for (var gn in st.groups) { if (!shownG[gn]) { html += '<div style="grid-column:1/-1;font-weight:600;color:var(--txt2);margin-top:10px">' + cn + ' → ' + gn + ':</div>'; st.groups[gn].forEach(function(item) { html += '<div class="admin-item-card"><div class="item-info"><strong>' + item + '</strong></div><button class="btn btn-delete" onclick="adminDeleteItem(\'' + cat + '\',\'' + item + '\')">✕</button></div>'; }); } } if (st.singles.length > 0) { html += '<div style="grid-column:1/-1;font-weight:600;color:var(--txt2);margin-top:10px">' + cn + ' (одиночные):</div>'; st.singles.forEach(function(item) { html += '<div class="admin-item-card"><div class="item-info"><strong>' + item + '</strong></div><button class="btn btn-delete" onclick="adminDeleteItem(\'' + cat + '\',\'' + item + '\')">✕</button></div>'; }); } } if (!html) html = '<p>Нет элементов</p>'; list.innerHTML = html; }
 
     // ===== ЦЕЛИ =====
-    function checkMidnightReset() { var today = new Date().toLocaleDateString('ru-RU'); var prod = getCurrentProductionData(); if (prod.goalPacked.date !== today) { if (prod.goalPacked.date) { prod.packedHistory[prod.goalPacked.date] = { black: prod.goalPacked.black, white: prod.goalPacked.white }; var keys = Object.keys(prod.packedHistory).sort(); while (keys.length > 30) { delete prod.packedHistory[keys.shift()]; } } prod.goalPacked = { black: 0, white: 0, date: today, startBlack: (prod.data.assembly && prod.data.assembly['Упакованные черные']) || 0, startWhite: (prod.data.assembly && prod.data.assembly['Упакованные белые']) || 0 }; saveCurrentProduction(); } }
-    function updateGoalPacked() { var prod = getCurrentProductionData(); if (!prod.goalPacked.date || prod.goalPacked.date !== new Date().toLocaleDateString('ru-RU')) checkMidnightReset(); var cb = (prod.data.assembly && prod.data.assembly['Упакованные черные']) || 0; var cw = (prod.data.assembly && prod.data.assembly['Упакованные белые']) || 0; prod.goalPacked.black = Math.max(0, cb - prod.goalPacked.startBlack); prod.goalPacked.white = Math.max(0, cw - prod.goalPacked.startWhite); }
+    function checkMidnightReset() { var today = new Date().toLocaleDateString('ru-RU'); if (goalPacked.date !== today) { if (goalPacked.date) { packedHistory[goalPacked.date] = { black: goalPacked.black, white: goalPacked.white }; var keys = Object.keys(packedHistory).sort(); while (keys.length > 30) { delete packedHistory[keys.shift()]; } } goalPacked = { black: 0, white: 0, date: today, startBlack: (productionData.assembly && productionData.assembly['Упакованные черные']) || 0, startWhite: (productionData.assembly && productionData.assembly['Упакованные белые']) || 0 }; saveAllData(); } }
+    function updateGoalPacked() { if (!goalPacked.date || goalPacked.date !== new Date().toLocaleDateString('ru-RU')) { checkMidnightReset(); } var cb = (productionData.assembly && productionData.assembly['Упакованные черные']) || 0; var cw = (productionData.assembly && productionData.assembly['Упакованные белые']) || 0; goalPacked.black = Math.max(0, cb - goalPacked.startBlack); goalPacked.white = Math.max(0, cw - goalPacked.startWhite); }
 
     // ===== ИЗМЕНЕНИЕ ЗНАЧЕНИЙ =====
-    function changeItemValue(cat, item, delta) { var prod = getCurrentProductionData(); if (!prod.data[cat]) prod.data[cat] = {}; if (prod.data[cat][item] === undefined) { prod.data[cat][item] = 1; prod.limits[item] = prod.limits[item] || 1; } var old = prod.data[cat][item]; if (typeof delta === 'string') { prod.data[cat][item] = Math.max(0, parseInt(delta) || 0); var act = 'ввод'; } else { prod.data[cat][item] = Math.max(0, old + delta); var act = delta > 0 ? '+' + delta : '' + delta; } var inputId = 'qty_' + cat + '_' + item.replace(/[^a-zA-Zа-яА-Я0-9]/g, '_'); var inp = document.getElementById(inputId); if (inp) inp.value = prod.data[cat][item]; var val = document.getElementById('val_' + inputId); if (val) { val.textContent = prod.data[cat][item]; var ml = prod.limits[item] || 0; ml > 0 && prod.data[cat][item] <= ml ? val.classList.add('critical') : val.classList.remove('critical'); } prod.history.unshift({ time: new Date().toLocaleString('ru-RU'), user: currentUser, item: item, old: old, new: prod.data[cat][item], act: act }); if (prod.history.length > 150) prod.history = prod.history.slice(0, 150); if (cat === 'assembly' && (item === 'Упакованные черные' || item === 'Упакованные белые')) updateGoalPacked(); checkAlerts(); saveCurrentProduction(); }
+    function changeItemValue(cat, item, delta) {
+        if (!productionData[cat]) { productionData[cat] = {}; }
+        if (productionData[cat][item] === undefined) { productionData[cat][item] = 1; minLimits[item] = minLimits[item] || 1; }
+        var old = productionData[cat][item];
+        if (typeof delta === 'string') { productionData[cat][item] = Math.max(0, parseInt(delta) || 0); var act = 'ввод'; }
+        else { productionData[cat][item] = Math.max(0, old + delta); var act = delta > 0 ? '+' + delta : '' + delta; }
+        var inputId = 'qty_' + cat + '_' + item.replace(/[^a-zA-Zа-яА-Я0-9]/g, '_');
+        var inputEl = document.getElementById(inputId);
+        if (inputEl) { inputEl.value = productionData[cat][item]; }
+        var valEl = document.getElementById('val_' + inputId);
+        if (valEl) { valEl.textContent = productionData[cat][item]; var ml = minLimits[item] || 0; if (ml > 0 && productionData[cat][item] <= ml) { valEl.classList.add('critical'); } else { valEl.classList.remove('critical'); } }
+        changeHistory.unshift({ time: new Date().toLocaleString('ru-RU'), user: currentUser, item: item, old: old, new: productionData[cat][item], act: act });
+        if (changeHistory.length > 150) changeHistory = changeHistory.slice(0, 150);
+        if (cat === 'assembly' && (item === 'Упакованные черные' || item === 'Упакованные белые')) { updateGoalPacked(); }
+        checkAlerts(); saveAllData();
+    }
 
-    function createItemHTML(cat, item, val, sub) { var prod = getCurrentProductionData(); var ml = prod.limits[item] || 0, crit = ml > 0 && val <= ml; var sc = cat.replace(/'/g, "\\'"), si = item.replace(/'/g, "\\'"); var id = 'qty_' + cat + '_' + item.replace(/[^a-zA-Zа-яА-Я0-9]/g, '_'); return '<div class="inventory-item' + (sub ? ' sub' : '') + '"><div class="item-name"><span>' + item + (isAdmin ? ' <span class="rename-icon" onclick="quickRename(\'' + sc + '\',\'' + si + '\')">✏️</span>' : '') + ' <span class="min-badge" onclick="quickEditLimit(\'' + si + '\')">мин:' + ml + '</span></span><span class="item-value' + (crit ? ' critical' : '') + '" id="val_' + id + '">' + val + '</span></div><div class="item-controls"><button class="btn btn-minus10" onclick="changeItemValue(\'' + sc + '\',\'' + si + '\',-10)">-10</button><button class="btn btn-minus1" onclick="changeItemValue(\'' + sc + '\',\'' + si + '\',-1)">-1</button><input type="number" class="qty-input" id="' + id + '" value="' + val + '" min="0" onchange="changeItemValue(\'' + sc + '\',\'' + si + '\',this.value)"><button class="btn btn-plus1" onclick="changeItemValue(\'' + sc + '\',\'' + si + '\',1)">+1</button><button class="btn btn-plus10" onclick="changeItemValue(\'' + sc + '\',\'' + si + '\',10)">+10</button></div></div>'; }
-    function renderCategorySection(cat, contId) { var s = CATEGORY_STRUCTURE[cat]; if (!s) return; var o = GROUP_ORDER[cat] || [], h = '', sg = {}; var prod = getCurrentProductionData(); o.forEach(function(g) { if (s.groups[g]) { sg[g] = true; h += '<h3 class="subsection-title">' + g + '</h3>'; s.groups[g].forEach(function(i) { var v = 1; if (prod.data[cat] && prod.data[cat][i] !== undefined) v = prod.data[cat][i]; else { if (!prod.data[cat]) prod.data[cat] = {}; prod.data[cat][i] = 1; if (prod.limits[i] === undefined) prod.limits[i] = 1; } h += createItemHTML(cat, i, v, true); }); } }); for (var g in s.groups) { if (!sg[g]) { h += '<h3 class="subsection-title">' + g + '</h3>'; s.groups[g].forEach(function(i) { var v = 1; if (prod.data[cat] && prod.data[cat][i] !== undefined) v = prod.data[cat][i]; else { if (!prod.data[cat]) prod.data[cat] = {}; prod.data[cat][i] = 1; if (prod.limits[i] === undefined) prod.limits[i] = 1; } h += createItemHTML(cat, i, v, true); }); } } if (s.singles.length > 0) { h += '<h3 class="subsection-title">Прочее</h3>'; s.singles.forEach(function(i) { var v = 1; if (prod.data[cat] && prod.data[cat][i] !== undefined) v = prod.data[cat][i]; else { if (!prod.data[cat]) prod.data[cat] = {}; prod.data[cat][i] = 1; if (prod.limits[i] === undefined) prod.limits[i] = 1; } h += createItemHTML(cat, i, v, false); }); } document.getElementById(contId).innerHTML = h; }
-    function renderAll() { renderCategorySection('supplies', 'supplies'); renderCategorySection('production', 'production'); renderCategorySection('assembly', 'assembly'); checkAlerts(); var prod = getCurrentProductionData(); var hd = document.getElementById('historyList'); hd.innerHTML = prod.history.length === 0 ? '<p style="color:var(--txt2)">Пусто</p>' : prod.history.map(function(r) { if (r.type === 'summary') { var h = '<div class="history-summary added"><strong>📅 ИТОГ ДНЯ</strong></div>'; if (r.added) h += r.added; if (r.removed) h += r.removed; return h; } return '<div class="history-item"><span style="color:' + (USER_COLORS[r.user] || '#636e72') + ';font-weight:600">' + (r.user || '?') + '</span> <strong>' + r.time + '</strong> - "' + r.item + '": ' + r.old + ' → ' + r.new + ' (' + r.act + ')</div>'; }).join(''); }
-    function checkAlerts() { var prod = getCurrentProductionData(); var bs = {}; for (var c in prod.data) for (var i in prod.data[c]) { var v = prod.data[c][i], ml = prod.limits[i] || 0; if (ml > 0 && v <= ml) { if (!bs[c]) bs[c] = []; bs[c].push({ name: i, value: v, min: ml }); } } var tc = 0; for (var s in bs) tc += bs[s].length; var ad = document.getElementById('alerts'); if (tc > 0) { var h = '<div class="alert-box"><div class="alert-header" onclick="toggleAlerts()"><h3>⚠️ Критические запасы (' + tc + ')</h3><span id="alertsArrow">' + (alertsOpen ? '▼' : '▶') + '</span></div><div class="alert-body' + (alertsOpen ? '' : ' hidden') + '">'; for (var s in bs) { h += '<div class="alert-section">' + (SECTION_NAMES[s] || s) + ':</div>'; bs[s].forEach(function(x) { h += '<div class="alert-item">🔴 ' + x.name + ': ' + x.value + ' ед. (мин: ' + x.min + ')</div>'; }); } h += '</div></div>'; ad.innerHTML = h; } else ad.innerHTML = ''; }
+    function createItemHTML(cat, item, val, sub) { var ml = minLimits[item] || 0, crit = ml > 0 && val <= ml; var safeCat = cat.replace(/'/g, "\\'"), safeItem = item.replace(/'/g, "\\'"); var inputId = 'qty_' + cat + '_' + item.replace(/[^a-zA-Zа-яА-Я0-9]/g, '_'); return '<div class="inventory-item' + (sub ? ' sub' : '') + '"><div class="item-name"><span>' + item + (isAdmin ? ' <span class="rename-icon" onclick="quickRename(\'' + safeCat + '\',\'' + safeItem + '\')" title="Переименовать">✏️</span>' : '') + ' <span class="min-badge" onclick="quickEditLimit(\'' + safeItem + '\')">мин:' + ml + '</span></span><span class="item-value' + (crit ? ' critical' : '') + '" id="val_' + inputId + '">' + val + '</span></div><div class="item-controls"><button class="btn btn-minus10" onclick="changeItemValue(\'' + safeCat + '\',\'' + safeItem + '\',-10)">-10</button><button class="btn btn-minus1" onclick="changeItemValue(\'' + safeCat + '\',\'' + safeItem + '\',-1)">-1</button><input type="number" class="qty-input" id="' + inputId + '" value="' + val + '" min="0" onchange="changeItemValue(\'' + safeCat + '\',\'' + safeItem + '\',this.value)"><button class="btn btn-plus1" onclick="changeItemValue(\'' + safeCat + '\',\'' + safeItem + '\',1)">+1</button><button class="btn btn-plus10" onclick="changeItemValue(\'' + safeCat + '\',\'' + safeItem + '\',10)">+10</button></div></div>'; }
+    function renderCategorySection(cat, contId) { var struct = getStructure()[cat]; if (!struct) return; var order = groupOrder[cat] || [], html = '', shownG = {}; order.forEach(function(gn) { if (struct.groups[gn]) { shownG[gn] = true; html += '<h3 class="subsection-title">' + gn + '</h3>'; struct.groups[gn].forEach(function(item) { var val = 1; if (productionData[cat] && productionData[cat][item] !== undefined) val = productionData[cat][item]; else { if (!productionData[cat]) productionData[cat] = {}; productionData[cat][item] = 1; if (minLimits[item] === undefined) minLimits[item] = 1; } html += createItemHTML(cat, item, val, true); }); } }); for (var gn in struct.groups) { if (!shownG[gn]) { html += '<h3 class="subsection-title">' + gn + '</h3>'; struct.groups[gn].forEach(function(item) { var val = 1; if (productionData[cat] && productionData[cat][item] !== undefined) val = productionData[cat][item]; else { if (!productionData[cat]) productionData[cat] = {}; productionData[cat][item] = 1; if (minLimits[item] === undefined) minLimits[item] = 1; } html += createItemHTML(cat, item, val, true); }); } } if (struct.singles.length > 0) { html += '<h3 class="subsection-title">Прочее</h3>'; struct.singles.forEach(function(item) { var val = 1; if (productionData[cat] && productionData[cat][item] !== undefined) val = productionData[cat][item]; else { if (!productionData[cat]) productionData[cat] = {}; productionData[cat][item] = 1; if (minLimits[item] === undefined) minLimits[item] = 1; } html += createItemHTML(cat, item, val, false); }); } document.getElementById(contId).innerHTML = html; }
+    function renderAll() { renderCategorySection('supplies', 'supplies'); renderCategorySection('production', 'production'); renderCategorySection('assembly', 'assembly'); checkAlerts(); var hd = document.getElementById('historyList'); hd.innerHTML = changeHistory.length === 0 ? '<p>Пусто</p>' : changeHistory.map(function(r) { if (r.type === 'summary') { var h = '<div class="history-summary added"><strong>📅 ИТОГ ДНЯ</strong></div>'; if (r.added) h += r.added; if (r.removed) h += r.removed; return h; } return '<div class="history-item"><span style="color:' + (USER_COLORS[r.user] || '#636e72') + ';font-weight:600">' + (r.user || '?') + '</span> <strong>' + r.time + '</strong> - "' + r.item + '": ' + r.old + ' → ' + r.new + ' (' + r.act + ')</div>'; }).join(''); }
+
+    function checkAlerts() { var bs = {}; for (var c in productionData) for (var i in productionData[c]) { var v = productionData[c][i], ml = minLimits[i] || 0; if (ml > 0 && v <= ml) { if (!bs[c]) bs[c] = []; bs[c].push({ name: i, value: v, min: ml }); } } var tc = 0; for (var s in bs) tc += bs[s].length; var ad = document.getElementById('alerts'); if (tc > 0) { var h = '<div class="alert-box"><div class="alert-header" onclick="toggleAlerts()"><h3>⚠️ Критические запасы (' + tc + ')</h3><span id="alertsArrow">' + (alertsOpen ? '▼' : '▶') + '</span></div><div class="alert-body' + (alertsOpen ? '' : ' hidden') + '">'; for (var s in bs) { h += '<div class="alert-section">' + (SECTION_NAMES[s] || s) + ':</div>'; bs[s].forEach(function(x) { h += '<div class="alert-item">🔴 ' + x.name + ': ' + x.value + ' ед. (мин: ' + x.min + ')</div>'; }); } h += '</div></div>'; ad.innerHTML = h; } else ad.innerHTML = ''; }
     function toggleAlerts() { alertsOpen = !alertsOpen; var b = document.querySelector('.alert-body'); if (b) b.classList.toggle('hidden', !alertsOpen); var a = document.getElementById('alertsArrow'); if (a) a.textContent = alertsOpen ? '▼' : '▶'; }
-    function quickEditLimit(item) { var prod = getCurrentProductionData(); var v = prompt('Мин. запас для «' + item + '» (0=отключить):', prod.limits[item] || 0); if (v !== null) { prod.limits[item] = Math.max(0, parseInt(v) || 0); saveCurrentProduction(); renderAll(); checkAlerts(); if (showLimitsPanel) renderLimitsPanel(); } }
-    function quickRename(cat, old) { if (!isAdmin) return; var n = prompt('Новое название:', old); if (!n || !n.trim() || n.trim() === old) return; n = n.trim(); var s = CATEGORY_STRUCTURE[cat], f = false; for (var g in s.groups) { var idx = s.groups[g].indexOf(old); if (idx !== -1) { s.groups[g][idx] = n; f = true; break; } } if (!f) { var si = s.singles.indexOf(old); if (si !== -1) { s.singles[si] = n; f = true; } } if (!f) return; var prod = getCurrentProductionData(); if (prod.data[cat] && prod.data[cat][old] !== undefined) { prod.data[cat][n] = prod.data[cat][old]; delete prod.data[cat][old]; } if (prod.limits[old] !== undefined) { prod.limits[n] = prod.limits[old]; delete prod.limits[old]; } prod.history.forEach(function(h) { if (h.item === old) h.item = n; }); saveCurrentProduction(); renderAll(); renderAdminItemList(); updateRenameSelects(); updateAdminGroupSelect(); renderDraggableList(); structureSynced = false; updateSyncIndicator(); showToast('✅ Переименовано'); }
 
     function toggleLimits() { showLimitsPanel = !showLimitsPanel; var p = document.getElementById('limitsPanel'), b = document.getElementById('limitsBtn'); showLimitsPanel ? (p.classList.add('show'), b.classList.add('active'), renderLimitsPanel()) : (p.classList.remove('show'), b.classList.remove('active')); }
-    function renderLimitsPanel() { var prod = getCurrentProductionData(); var g = document.getElementById('limitsGrid'), it = {}; for (var c in prod.data) for (var i in prod.data[c]) it[i] = prod.limits[i] || 0; g.innerHTML = Object.keys(it).sort().map(function(i) { return '<div class="limit-item"><span class="limit-name">' + i + '</span><div class="limit-controls"><span style="font-size:11px">Мин:</span><input type="number" class="limit-input" value="' + it[i] + '" min="0" onchange="getCurrentProductionData().limits[\'' + i.replace(/'/g, "\\'") + '\']=Math.max(0,parseInt(this.value)||0);saveCurrentProduction();renderAll();checkAlerts()"></div></div>'; }).join(''); }
-    function saveLimits() { var prod = getCurrentProductionData(); document.querySelectorAll('.limit-input').forEach(function(inp) { prod.limits[inp.closest('.limit-item').querySelector('.limit-name').textContent] = Math.max(0, parseInt(inp.value) || 0); }); saveCurrentProduction(); renderAll(); checkAlerts(); showToast('✅ Лимиты сохранены'); }
+    function renderLimitsPanel() { var g = document.getElementById('limitsGrid'), it = {}; for (var c in productionData) for (var i in productionData[c]) it[i] = minLimits[i] || 0; g.innerHTML = Object.keys(it).sort().map(function(i) { return '<div class="limit-item"><span class="limit-name">' + i + '</span><div class="limit-controls"><span>Мин:</span><input type="number" class="limit-input" value="' + it[i] + '" min="0" onchange="minLimits[\'' + i.replace(/'/g, "\\'") + '\']=Math.max(0,parseInt(this.value)||0);saveAllData();renderAll();checkAlerts()"></div></div>'; }).join(''); }
+    function saveLimits() { document.querySelectorAll('.limit-input').forEach(function(inp) { minLimits[inp.closest('.limit-item').querySelector('.limit-name').textContent] = Math.max(0, parseInt(inp.value) || 0); }); saveAllData(); renderAll(); checkAlerts(); showToast('✅ Лимиты сохранены'); }
+    function quickEditLimit(item) { var v = prompt('Мин. запас для "' + item + '":\n(0 = отключить)', minLimits[item] || 0); if (v !== null) { minLimits[item] = Math.max(0, parseInt(v) || 0); saveAllData(); renderAll(); checkAlerts(); if (showLimitsPanel) renderLimitsPanel(); } }
 
     function togglePinboard() { pinboardOpen = !pinboardOpen; document.getElementById('pinboardBody').classList.toggle('hidden', !pinboardOpen); document.getElementById('pinboardArrow').textContent = pinboardOpen ? '▼' : '▶'; }
-    function addNote() { var t = document.getElementById('newNoteText').value.trim(), a = document.getElementById('newNoteAssignee').value; if (!t) return showToast('Введите текст'); var prod = getCurrentProductionData(); prod.notes.unshift({ id: Date.now(), text: t, assignee: a, author: currentUser, done: false, created: new Date().toLocaleString('ru-RU') }); document.getElementById('newNoteText').value = ''; document.getElementById('newNoteAssignee').value = ''; renderNotes(); saveCurrentProduction(); }
-    function toggleNoteDone(id) { var prod = getCurrentProductionData(); var n = prod.notes.find(function(x) { return x.id === id; }); if (n) { n.done = !n.done; renderNotes(); saveCurrentProduction(); } }
-    function editNote(id) { var prod = getCurrentProductionData(); var n = prod.notes.find(function(x) { return x.id === id; }); if (!n) return; var t = prompt('Редактировать:', n.text); if (t && t.trim()) { n.text = t.trim(); renderNotes(); saveCurrentProduction(); } }
-    function deleteNote(id) { if (confirm('Удалить?')) { var prod = getCurrentProductionData(); prod.notes = prod.notes.filter(function(x) { return x.id !== id; }); renderNotes(); saveCurrentProduction(); } }
-    function renderNotes() { var prod = getCurrentProductionData(); var a = prod.notes.filter(function(x) { return !x.done; }); document.getElementById('noteCount').textContent = '[' + a.length + ']'; document.getElementById('notesList').innerHTML = a.length === 0 ? '<p style="color:var(--txt2)">Нет активных записок</p>' : a.map(createNoteCard).join(''); }
-    function createNoteCard(n) { var c = USER_COLORS[n.author] || '#636e72'; return '<div class="note-card' + (n.done ? ' done' : '') + '"><div class="note-header"><strong style="color:' + c + '">' + (n.author || '?') + '</strong><span style="font-size:11px">' + n.created + '</span></div><div class="note-text">' + n.text + '</div><div class="note-meta">' + (n.assignee ? '<span>👤 ' + n.assignee + '</span>' : '<span>👤 Без исполнителя</span>') + '</div><div class="note-actions"><button class="note-btn done-btn" onclick="toggleNoteDone(' + n.id + ')">' + (n.done ? '↩' : '✓') + '</button><button class="note-btn edit-btn" onclick="editNote(' + n.id + ')">✏️</button><button class="note-btn delete-btn" onclick="deleteNote(' + n.id + ')">🗑️</button></div></div>'; }
+    function addNote() { var t = document.getElementById('newNoteText').value.trim(), a = document.getElementById('newNoteAssignee').value; if (!t) return showToast('Введите текст'); notes.unshift({ id: Date.now(), text: t, assignee: a, author: currentUser, done: false, created: new Date().toLocaleString('ru-RU') }); document.getElementById('newNoteText').value = ''; document.getElementById('newNoteAssignee').value = ''; renderNotes(); saveAllData(); }
+    function toggleNoteDone(id) { var n = notes.find(function(x) { return x.id === id; }); if (n) { n.done = !n.done; renderNotes(); saveAllData(); } }
+    function editNote(id) { var n = notes.find(function(x) { return x.id === id; }); if (!n) return; var t = prompt('Редактировать:', n.text); if (t && t.trim()) { n.text = t.trim(); renderNotes(); saveAllData(); } }
+    function deleteNote(id) { if (confirm('Удалить?')) { notes = notes.filter(function(x) { return x.id !== id; }); renderNotes(); saveAllData(); } }
+    function renderNotes() { var a = notes.filter(function(x) { return !x.done; }); document.getElementById('noteCount').textContent = '[' + a.length + ']'; document.getElementById('notesList').innerHTML = a.length === 0 ? '<p>Нет активных записок</p>' : a.map(createNoteCard).join(''); }
+    function createNoteCard(n) { var c = USER_COLORS[n.author] || '#636e72'; return '<div class="note-card' + (n.done ? ' done' : '') + '"><div class="note-header"><strong style="color:' + c + '">' + (n.author || '?') + '</strong><span>' + n.created + '</span></div><div class="note-text">' + n.text + '</div><div class="note-meta">' + (n.assignee ? '<span>👤 ' + n.assignee + '</span>' : '<span>👤 Без исполнителя</span>') + '</div><div class="note-actions"><button class="note-btn done-btn" onclick="toggleNoteDone(' + n.id + ')">' + (n.done ? '↩' : '✓') + '</button><button class="note-btn edit-btn" onclick="editNote(' + n.id + ')">✏️</button><button class="note-btn delete-btn" onclick="deleteNote(' + n.id + ')">🗑️</button></div></div>'; }
 
-    function dailySummary() { var today = new Date().toLocaleDateString('ru-RU'); var prod = getCurrentProductionData(); var th = prod.history.filter(function(h) { return h.time && h.time.split(',')[0] === today; }); if (!th.length) { showToast('📅 Нет изменений'); return; } var sum = {}; th.forEach(function(h) { if (!sum[h.item]) sum[h.item] = { added: 0, removed: 0, start: h.old, end: h.new }; var d = h.new - h.old; d > 0 ? sum[h.item].added += d : sum[h.item].removed += Math.abs(d); sum[h.item].start = Math.min(sum[h.item].start, h.old); sum[h.item].end = h.new; }); var ah = '', rh = ''; for (var i in sum) { var s = sum[i]; if (s.added > 0) ah += '<div class="history-item">🟢 <strong>' + i + '</strong>: +' + s.added + ' (' + s.start + ' → ' + s.end + ')</div>'; if (s.removed > 0) rh += '<div class="history-item">🔴 <strong>' + i + '</strong>: -' + s.removed + ' (' + s.start + ' → ' + s.end + ')</div>'; } prod.history.unshift({ time: '📅 ' + today, type: 'summary', added: ah, removed: rh }); if (prod.history.length > 150) prod.history = prod.history.slice(0, 150); saveCurrentProduction(); renderAll(); showToast('✅ Итог дня добавлен'); }
-    function clearHistory() { if (confirm('Очистить историю?')) { getCurrentProductionData().history = []; saveCurrentProduction(); renderAll(); } }
+    function dailySummary() { var today = new Date().toLocaleDateString('ru-RU'), th = changeHistory.filter(function(h) { return h.time && h.time.split(',')[0] === today; }); if (!th.length) { showToast('📅 Нет изменений за сегодня'); return; } var sum = {}; th.forEach(function(h) { if (!sum[h.item]) sum[h.item] = { added: 0, removed: 0, start: h.old, end: h.new }; var d = h.new - h.old; d > 0 ? sum[h.item].added += d : sum[h.item].removed += Math.abs(d); sum[h.item].start = Math.min(sum[h.item].start, h.old); sum[h.item].end = h.new; }); var ah = '', rh = ''; for (var i in sum) { var s = sum[i]; if (s.added > 0) ah += '<div class="history-item">🟢 <strong>' + i + '</strong>: +' + s.added + ' (' + s.start + ' → ' + s.end + ')</div>'; if (s.removed > 0) rh += '<div class="history-item">🔴 <strong>' + i + '</strong>: -' + s.removed + ' (' + s.start + ' → ' + s.end + ')</div>'; } changeHistory.unshift({ time: '📅 ' + today, type: 'summary', added: ah, removed: rh }); if (changeHistory.length > 150) changeHistory = changeHistory.slice(0, 150); saveAllData(); renderAll(); showToast('✅ Итог дня добавлен'); }
+    function autoDailySummary() { var ls = localStorage.getItem('lastSummaryDate'), today = new Date().toLocaleDateString('ru-RU'); if (ls !== today) { localStorage.setItem('lastSummaryDate', today); var y = new Date(Date.now() - 86400000).toLocaleDateString('ru-RU'); if (changeHistory.some(function(h) { return h.time && h.time.includes(y); }) && changeHistory.length > 0) dailySummary(); } }
 
-    function renderGoals() { var prod = getCurrentProductionData(); var pt = prod.goals.total || 100, pk = prod.goalPacked.black + prod.goalPacked.white, pc = pt > 0 ? Math.round((pk / pt) * 100) : 0, dn = pk >= pt; var h = '<p style="color:var(--txt2);font-size:11px;margin-bottom:10px">⚠️ Сброс в 00:00 МСК (не влияет на Отдел 3)</p>'; h += '<div class="goal-item"><span class="goal-label">🎯 План:</span><input type="number" class="goal-input" value="' + pt + '" min="1" onchange="updateDailyGoal(this.value)"><span>упакованных рамок</span></div>'; h += '<div class="goal-item"><span class="goal-label">✅ Факт:</span><span style="font-size:18px;font-weight:bold">' + pk + '</span><span>упаковано (⚫' + prod.goalPacked.black + ' ⚪' + prod.goalPacked.white + ')</span><span class="goal-progress' + (dn ? ' goal-done' : ' goal-pending') + '">' + pc + '%</span></div>'; h += dn ? '<p style="color:var(--green);text-align:center;font-weight:bold">🎉 План выполнен!</p>' : '<p style="color:var(--txt2);text-align:center">Осталось: ' + (pt - pk) + ' рамок</p>'; var dates = Object.keys(prod.packedHistory).sort().reverse(); if (dates.length > 0) { h += '<h3 style="margin-top:20px">📋 История (30 дней):</h3><div style="max-height:250px;overflow-y:auto"><table class="goal-history-table"><thead><tr><th>Дата</th><th>⚫ Черные</th><th>⚪ Белые</th><th>Всего</th></tr></thead><tbody>'; dates.forEach(function(d) { var data = prod.packedHistory[d] || { black: 0, white: 0 }; h += '<tr><td>' + d + '</td><td>' + data.black + '</td><td>' + data.white + '</td><td><strong>' + (data.black + data.white) + '</strong></td></tr>'; }); h += '</tbody></table></div>'; } document.getElementById('goalsContent').innerHTML = h; }
-    function updateDailyGoal(v) { getCurrentProductionData().goals.total = Math.max(1, parseInt(v) || 100); saveCurrentProduction(); renderGoals(); }
+    function renderGoals() { var pt = dailyGoals.total || 100; var packedTotal = goalPacked.black + goalPacked.white; var pc = pt > 0 ? Math.round((packedTotal / pt) * 100) : 0; var dn = packedTotal >= pt; var html = '<p style="font-size:11px;color:var(--txt2);margin-bottom:10px">⚠️ Сброс счётчика в 00:00 по МСК</p>'; html += '<div class="goal-item"><span class="goal-label">🎯 План:</span><input type="number" class="goal-input" value="' + pt + '" min="1" onchange="updateDailyGoal(this.value)"><span>упакованных рамок</span></div>'; html += '<div class="goal-item"><span class="goal-label">✅ Факт:</span><span style="font-size:18px;font-weight:bold">' + packedTotal + '</span><span>упаковано сегодня (⚫' + goalPacked.black + ' ⚪' + goalPacked.white + ')</span><span class="goal-progress' + (dn ? ' goal-done' : ' goal-pending') + '">' + pc + '%</span></div>'; html += (dn ? '<p style="color:var(--green);text-align:center;font-weight:bold;margin-top:10px">🎉 План выполнен!</p>' : '<p style="color:var(--txt2);text-align:center;margin-top:10px">Осталось: ' + (pt - packedTotal) + ' рамок</p>'); var dates = Object.keys(packedHistory).sort().reverse(); if (dates.length > 0) { html += '<h3 style="margin-top:20px">📋 История (30 дней):</h3><div style="max-height:250px;overflow-y:auto"><table class="goal-history-table"><thead><tr><th>Дата</th><th>⚫</th><th>⚪</th><th>Всего</th></tr></thead><tbody>'; dates.forEach(function(date) { var data = packedHistory[date] || { black: 0, white: 0 }; html += '<tr><td>' + date + '</td><td>' + data.black + '</td><td>' + data.white + '</td><td><strong>' + (data.black + data.white) + '</strong></td></tr>'; }); html += '</tbody></table></div>'; } else { html += '<p style="color:var(--txt2);margin-top:15px">Нет данных</p>'; } document.getElementById('goalsContent').innerHTML = html; }
+    function updateDailyGoal(v) { dailyGoals.total = Math.max(1, parseInt(v) || 100); saveAllData(); renderGoals(); }
 
-    function renderOverallStats() { var h = ''; ['production1', 'production2', 'production3'].forEach(function(k) { var p = allProductions[k] || createEmptyProduction(); var sh = (p.data.assembly && p.data.assembly['Отдано черные'] || 0) + (p.data.assembly && p.data.assembly['Отдано белые'] || 0); var cr = 0; for (var c in p.data) for (var i in p.data[c]) { var ml = p.limits[i] || 0; if (ml > 0 && p.data[c][i] <= ml) cr++; } var pk = p.goalPacked.black + p.goalPacked.white; h += '<tr class="prod-row-' + (['production1','production2','production3'].indexOf(k) + 1) + '"><td><strong>' + PRODUCTION_NAMES[k] + '</strong></td><td>' + sh + '</td><td style="color:' + (cr > 0 ? 'var(--red)' : 'var(--green)') + '">' + cr + '</td><td>' + pk + '</td></tr>'; }); document.getElementById('overallStatsBody').innerHTML = h; }
+    function updateStats() { var st = ((productionData.assembly && productionData.assembly['Отдано черные']) || 0) + ((productionData.assembly && productionData.assembly['Отдано белые']) || 0), cc = 0; for (var c in productionData) for (var i in productionData[c]) { var ml = minLimits[i] || 0; if (ml > 0 && productionData[c][i] <= ml) cc++; } document.getElementById('statsGrid').innerHTML = '<div class="stat-card"><h4>Синхронизация</h4><div class="stat-value" style="font-size:24px">🟢</div></div><div class="stat-card"><h4>Отгружено всего</h4><div class="stat-value">' + st + '</div></div><div class="stat-card"><h4>Критических запасов</h4><div class="stat-value" style="color:var(--red)">' + cc + '</div></div>'; }
 
-    function updateStats() { var prod = getCurrentProductionData(); var st = (prod.data.assembly && prod.data.assembly['Отдано черные'] || 0) + (prod.data.assembly && prod.data.assembly['Отдано белые'] || 0); var cc = 0; for (var c in prod.data) for (var i in prod.data[c]) { var ml = prod.limits[i] || 0; if (ml > 0 && prod.data[c][i] <= ml) cc++; } document.getElementById('statsGrid').innerHTML = '<div class="stat-card"><h4>Синхронизация</h4><div class="stat-value" style="font-size:24px">' + (isOnline ? '🟢' : '🟡') + '</div></div><div class="stat-card"><h4>Отгружено всего</h4><div class="stat-value">' + st + '</div></div><div class="stat-card"><h4>Критических запасов</h4><div class="stat-value" style="color:var(--red)">' + cc + '</div></div>'; }
+    function toggleTheme() { darkMode = !darkMode; darkMode ? document.body.setAttribute('data-theme', 'dark') : document.body.removeAttribute('data-theme'); localStorage.setItem('dm', JSON.stringify(darkMode)); }
+    function switchTab(name) { document.querySelectorAll('.tab').forEach(function(t) { t.classList.remove('active'); }); document.querySelectorAll('.tab-content').forEach(function(c) { c.classList.remove('active'); }); event.target.classList.add('active'); document.getElementById('tab-' + name).classList.add('active'); if (name === 'stats') updateStats(); if (name === 'goals') renderGoals(); }
+    function clearHistory() { if (confirm('Очистить историю?')) { changeHistory = []; saveAllData(); renderAll(); } }
 
-    function toggleTheme() { darkMode = !darkMode; darkMode ? document.body.setAttribute('data-theme', 'dark') : document.body.removeAttribute('data-theme'); localStorage.setItem('darkMode', JSON.stringify(darkMode)); }
-    function switchTab(name) { document.querySelectorAll('.tab').forEach(function(t) { t.classList.remove('active'); }); document.querySelectorAll('.tab-content').forEach(function(c) { c.classList.remove('active'); }); event.target.classList.add('active'); document.getElementById('tab-' + name).classList.add('active'); if (name === 'stats') updateStats(); if (name === 'goals') renderGoals(); if (name === 'overall') renderOverallStats(); }
+    function updateProductionUI() {
+        document.getElementById('headerProdName').textContent = currentProduction;
+        var color = PRODUCTION_COLORS[currentProduction] || '#636e72';
+        document.getElementById('prodIndicator').style.backgroundColor = color;
+        document.getElementById('prodIndicator').textContent = '🏭';
+        if (isAdmin) {
+            document.getElementById('adminPanel').classList.add('show');
+            document.getElementById('limitsBtn').classList.add('admin-btn');
+        }
+        updateAdminVisibility();
+    }
 
-    function startAutoSync() { stopAutoSync(); syncTimer = setInterval(syncData, SYNC_INTERVAL); }
-    function stopAutoSync() { if (syncTimer) { clearInterval(syncTimer); syncTimer = null; } }
-    async function loadFromCloud() { if (!isOnline) return; try { updateSyncStatus('sync-loading', '🔄 Загрузка...'); var r = await fetch(SYNC_URL + '?sheet=' + currentProduction + '&t=' + Date.now()); var cd = JSON.parse(await r.text()); var lt = parseInt(localStorage.getItem('lastUpdate_' + currentProduction) || '0'), ct = cd.t || 0; if (cd.d && (isFirstSync || ct > lt)) { var prod = getCurrentProductionData(); prod.data = cd.d; if (cd.l) prod.limits = cd.l; if (cd.h) prod.history = cd.h; if (cd.n) prod.notes = cd.n.filter(function(n) { return n.created && !n.created.includes('T'); }); if (cd.g) prod.goals = cd.g; if (cd.p) prod.packedHistory = cd.p; if (cd.gp) prod.goalPacked = cd.gp; if (cd.s) CATEGORY_STRUCTURE = cd.s; if (cd.o) GROUP_ORDER = cd.o; localStorage.setItem('lastUpdate_' + currentProduction, ct); renderAll(); updateStats(); renderNotes(); renderGoals(); updateSyncStatus('sync-online', '🟢 Загружено'); } else if (ct < lt) await pushToCloud(); else updateSyncStatus('sync-online', '🟢 OK'); isFirstSync = false; } catch(e) { updateSyncStatus('sync-error', '🔴 Ошибка'); } }
-    async function pushToCloud() { if (!isOnline) { saveCurrentProduction(); return; } var prod = getCurrentProductionData(); var ts = Date.now(), p = JSON.stringify({ d: prod.data, l: prod.limits, h: prod.history.slice(0, 30), n: prod.notes, g: prod.goals, s: CATEGORY_STRUCTURE, o: GROUP_ORDER, p: prod.packedHistory, gp: prod.goalPacked, t: ts }); try { updateSyncStatus('sync-loading', '🔄 Отправка...'); await fetch(SYNC_URL + '?sheet=' + currentProduction, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: p }); localStorage.setItem('lastUpdate_' + currentProduction, ts); updateSyncStatus('sync-online', '🟢 OK'); structureSynced = true; updateSyncIndicator(); } catch(e) { updateSyncStatus('sync-error', '🔴 Ошибка'); saveCurrentProduction(); } }
-    async function syncData() { if (!isOnline) return; try { var r = await fetch(SYNC_URL + '?sheet=' + currentProduction + '&t=' + Date.now()); var cd = JSON.parse(await r.text()); var lt = parseInt(localStorage.getItem('lastUpdate_' + currentProduction) || '0'), ct = cd.t || 0; if (cd.d && ct > lt) { var prod = getCurrentProductionData(); prod.data = cd.d; if (cd.l) prod.limits = cd.l; if (cd.h) prod.history = cd.h; if (cd.n) prod.notes = cd.n.filter(function(n) { return n.created && !n.created.includes('T'); }); if (cd.g) prod.goals = cd.g; if (cd.p) prod.packedHistory = cd.p; if (cd.gp) prod.goalPacked = cd.gp; if (cd.s) CATEGORY_STRUCTURE = cd.s; if (cd.o) GROUP_ORDER = cd.o; localStorage.setItem('lastUpdate_' + currentProduction, ct); renderAll(); updateStats(); renderNotes(); renderGoals(); updateSyncStatus('sync-online', '🟢 Обновлено'); } else if (ct < lt) await pushToCloud(); else updateSyncStatus('sync-online', '🟢 OK'); } catch(e) { updateSyncStatus('sync-error', '🔴 Ошибка'); } }
-    function syncNow() { if (!isOnline) { showToast('❌ Нет интернета'); return; } pushToCloud().then(function() { showToast('✅'); }).catch(function() { showToast('❌'); }); }
+    function updateAdminVisibility() {
+        var showAdmin = isAdmin || ilyaAdminMode;
+        document.getElementById('adminPanel').style.display = showAdmin ? 'block' : 'none';
+        document.getElementById('debugToggle').style.display = showAdmin ? 'block' : 'none';
+        document.getElementById('tgTestBtn').style.display = showAdmin ? 'block' : 'none';
+        if (currentUser === 'Илья') {
+            document.getElementById('ilyaAdminToggle').style.display = 'inline-block';
+            document.getElementById('ilyaAdminToggle').textContent = ilyaAdminMode ? '🔴 Админ ON' : '🔧 Админ OFF';
+            document.getElementById('ilyaAdminToggle').classList.toggle('active', ilyaAdminMode);
+        } else {
+            document.getElementById('ilyaAdminToggle').style.display = 'none';
+        }
+    }
 
-    function checkTelegramReport() { var now = new Date(); var h = now.getHours(); var today = now.toLocaleDateString('ru-RU'); if (h >= 23 && lastTelegramReport !== today) { sendDailyTelegramReport(); localStorage.setItem('lastTelegramReport', today); } }
-    setInterval(checkTelegramReport, 60000);
+    function toggleIlyaAdmin() {
+        if (currentUser !== 'Илья') return;
+        ilyaAdminMode = !ilyaAdminMode;
+        isAdmin = ilyaAdminMode;
+        updateAdminVisibility();
+        renderAll();
+        renderAdminItemList();
+        renderDraggableList();
+        updateRenameSelects();
+        updateAdminGroupSelect();
+        if (ilyaAdminMode) { showToast('🔧 Режим администратора включён'); }
+        else { showToast('👷 Режим рабочего включён'); }
+    }
 
-    function initApp() { if (darkMode) document.body.setAttribute('data-theme', 'dark'); checkMidnightReset(); updateGoalPacked(); renderAll(); updateStats(); renderGoals(); renderNotes(); renderAdminItemList(); renderDraggableList(); updateAdminGroupSelect(); updateRenameSelects(); if (isAdmin) { document.getElementById('adminPanel').classList.add('show'); } updateTelegramButton(); updateSyncIndicator(); if (isOnline) { loadFromCloud().then(function() { startAutoSync(); }); } else updateSyncStatus('sync-offline', '🟡 Оффлайн'); }
+    function syncNow() { saveToFirebase().then(function() { showToast('✅ Синхронизировано'); }); }
 
-    window.addEventListener('online', function() { isOnline = true; updateSyncStatus('sync-online', '🟢 Онлайн'); syncNow(); });
-    window.addEventListener('offline', function() { isOnline = false; updateSyncStatus('sync-offline', '🟡 Оффлайн'); });
-
+    // ===== АВТОРИЗАЦИЯ =====
     function initAuth() { currentUser ? showProductionSelect() : showPasswordScreen(); }
-    function showPasswordScreen() { document.getElementById('authOverlay').classList.remove('hidden'); document.getElementById('appContainer').style.display = 'none'; document.getElementById('authCard').innerHTML = '<h2>🏭 Вход</h2><input type="password" class="auth-input" id="passInput" placeholder="1980" maxlength="4" autofocus><p style="color:var(--red);display:none" id="passError">Неверный пароль</p><button class="btn btn-plus10" onclick="checkPassword()" style="width:100%;margin-top:10px;padding:12px;font-size:16px">Войти</button>'; document.getElementById('passInput').addEventListener('keypress', function(e) { if (e.key === 'Enter') checkPassword(); }); setTimeout(function() { var i = document.getElementById('passInput'); if (i) i.focus(); }, 100); }
-    function checkPassword() { document.getElementById('passInput').value === PASSWORD ? showUserSelect() : (document.getElementById('passError').style.display = 'block', document.getElementById('passInput').value = ''); }
-    function showUserSelect() { var h = '<h2>👤 Кто вы?</h2><div class="user-list">'; USER_LIST.forEach(function(u) { var isA = u === 'Админ'; h += '<button class="user-btn' + (isA ? ' admin-btn' : '') + '" style="border-left:4px solid ' + USER_COLORS[u] + '" onclick="login(\'' + u + '\')">' + u + (isA ? ' 🔧' : '') + '</button>'; }); h += '<button class="user-btn custom-user-btn" onclick="loginCustom()">✏️ Другое имя...</button></div>'; document.getElementById('authCard').innerHTML = h; }
-    function login(u) { currentUser = u; isAdmin = u === 'Админ'; localStorage.setItem('currentUser', u); updateTelegramButton(); showProductionSelect(); }
-    function loginCustom() { var n = prompt('Ваше имя:'); if (n && n.trim()) { currentUser = n.trim(); isAdmin = false; localStorage.setItem('currentUser', currentUser); updateTelegramButton(); showProductionSelect(); } }
-    function switchUser() { if (confirm('Сменить пользователя?')) { currentUser = null; isAdmin = false; localStorage.removeItem('currentUser'); updateTelegramButton(); showPasswordScreen(); } }
-    function showApp() { document.getElementById('authOverlay').classList.add('hidden'); document.getElementById('appContainer').style.display = 'block'; document.getElementById('userBadge').textContent = '👤 ' + currentUser; document.getElementById('userBadge').style.borderLeft = '4px solid ' + (USER_COLORS[currentUser] || '#636e72'); if (isAdmin) document.getElementById('userBadge').classList.add('admin-badge'); else document.getElementById('userBadge').classList.remove('admin-badge'); document.getElementById('newNoteAssignee').innerHTML = '<option value="">Исполнитель...</option>' + USER_LIST.map(function(u) { return '<option value="' + u + '">' + u + '</option>'; }).join(''); updateProductionUI(); initApp(); }
+    function showPasswordScreen() {
+        document.getElementById('authOverlay').classList.remove('hidden');
+        document.getElementById('appContainer').style.display = 'none';
+        document.getElementById('authCard').innerHTML = '<h2>🏭 Вход</h2><input type="password" class="auth-input" id="passInput" placeholder="Введите пароль" maxlength="10" autofocus><p style="color:var(--red);display:none" id="passError">Неверный пароль</p><button class="btn btn-plus10" onclick="checkPassword()" style="width:100%;margin-top:10px;padding:12px;font-size:16px">Войти</button>';
+        document.getElementById('passInput').addEventListener('keypress', function(e) { if (e.key === 'Enter') checkPassword(); });
+        setTimeout(function() { var inp = document.getElementById('passInput'); if (inp) inp.focus(); }, 100);
+    }
+    function checkPassword() {
+        var pass = document.getElementById('passInput').value;
+        if (pass === ADMIN_PASSWORD) { currentUser = 'Админ'; isAdmin = true; ilyaAdminMode = false; showProductionSelect(); }
+        else if (pass === USER_PASSWORD) { showUserSelect(); }
+        else { document.getElementById('passError').style.display = 'block'; document.getElementById('passInput').value = ''; }
+    }
+    function showUserSelect() {
+        var html = '<h2>👤 Кто вы?</h2><div class="user-list">';
+        USER_LIST.forEach(function(u) { html += '<button class="user-btn" style="border-left:4px solid ' + USER_COLORS[u] + '" onclick="selectUser(\'' + u + '\')">' + u + '</button>'; });
+        html += '<button class="user-btn custom-user-btn" onclick="loginCustom()">✏️ Другое имя...</button></div>';
+        document.getElementById('authCard').innerHTML = html;
+    }
+    function selectUser(userName) { currentUser = userName; isAdmin = false; ilyaAdminMode = false; showProductionSelect(); }
+    function loginCustom() { var n = prompt('Введите ваше имя:'); if (n && n.trim()) { currentUser = n.trim(); isAdmin = false; ilyaAdminMode = false; showProductionSelect(); } }
+    function showProductionSelect() {
+        if (currentUser === 'Админ') { isAdmin = true; currentProduction = productionList[0]; showApp(); return; }
+        var html = '<h2>🏭 Выберите производство</h2><div class="user-list">';
+        productionList.forEach(function(p) {
+            var color = PRODUCTION_COLORS[p] || '#636e72';
+            html += '<button class="prod-btn" style="border-left:5px solid ' + color + '" onclick="selectProduction(\'' + p + '\')">' + p + '</button>';
+        });
+        html += '<br><button class="btn btn-minus10" onclick="switchUser()" style="margin-top:10px">↩ Назад</button></div>';
+        document.getElementById('authCard').innerHTML = html;
+    }
+    function selectProduction(prod) { currentProduction = prod; showApp(); }
+    function switchUser() { currentUser = null; isAdmin = false; ilyaAdminMode = false; showPasswordScreen(); }
 
+    async function showApp() {
+        document.getElementById('authOverlay').classList.add('hidden');
+        document.getElementById('appContainer').style.display = 'block';
+        document.getElementById('userBadge').textContent = '👤 ' + currentUser;
+        document.getElementById('userBadge').style.borderLeft = '4px solid ' + (USER_COLORS[currentUser] || '#636e72');
+        if (isAdmin) document.getElementById('userBadge').classList.add('admin-badge');
+        else document.getElementById('userBadge').classList.remove('admin-badge');
+        document.getElementById('newNoteAssignee').innerHTML = '<option value="">Исполнитель...</option>' + USER_LIST.map(function(u) { return '<option value="' + u + '">' + u + '</option>'; }).join('');
+        updateProductionUI();
+        await loadFromFirebase();
+        checkMidnightReset();
+        updateGoalPacked();
+        renderAll();
+        updateStats();
+        renderNotes();
+        renderGoals();
+        renderAdminItemList();
+        renderDraggableList();
+        updateRenameSelects();
+        updateAdminGroupSelect();
+        renderProductionSelects();
+        updateAdminVisibility();
+    }
+
+    setInterval(function() { checkMidnightReset(); }, 60000);
     initAuth();
     </script>
 </body>
