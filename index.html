@@ -30,20 +30,25 @@
         }
         .auth-overlay { position: fixed; inset: 0; background: var(--bg); z-index: 9999; display: flex; justify-content: center; align-items: center; }
         .auth-overlay.hidden { display: none; }
-        .auth-card { background: var(--card); border-radius: 20px; padding: 40px; border: 2px solid var(--brd); box-shadow: var(--shadow); text-align: center; max-width: 460px; width: 90%; max-height: 90vh; overflow-y: auto; }
+        .auth-card { background: var(--card); border-radius: 20px; padding: 30px; border: 2px solid var(--brd); box-shadow: var(--shadow); text-align: center; max-width: 460px; width: 90%; max-height: 90vh; overflow-y: auto; }
         .auth-card h2 { color: var(--green); margin-bottom: 20px; }
         .auth-input { width: 100%; padding: 12px; margin: 10px 0; border: 2px solid var(--brd); border-radius: 10px; font-size: 24px; text-align: center; letter-spacing: 10px; background: var(--bg); color: var(--txt); }
         .auth-input:focus { outline: none; border-color: var(--green); }
         .user-list { display: flex; flex-direction: column; gap: 8px; margin: 15px 0; }
-        .user-btn { padding: 12px; border: 2px solid var(--brd); border-radius: 10px; background: var(--card); color: var(--txt); cursor: pointer; font-size: 16px; transition: all .3s; text-align: left; }
+        .user-btn { padding: 16px 12px; border: 2px solid var(--brd); border-radius: 10px; background: var(--card); color: var(--txt); cursor: pointer; font-size: 16px; transition: all .3s; text-align: left; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
         .user-btn:hover { background: var(--green); color: #fff; border-color: var(--green); }
+        .user-btn:active { background: var(--green); color: #fff; border-color: var(--green); }
         .user-btn.admin-btn { border-color: var(--admin); color: var(--admin); }
         .user-btn.admin-btn:hover { background: var(--admin); color: #fff; }
-        .prod-select-card { padding: 14px; border: 3px solid var(--brd); border-radius: 12px; background: var(--card); color: var(--txt); cursor: pointer; font-size: 17px; transition: all .3s; text-align: center; margin: 5px 0; font-weight: 600; position: relative; }
+        .user-btn.admin-btn:active { background: var(--admin); color: #fff; }
+        .prod-select-card { padding: 14px; border: 3px solid var(--brd); border-radius: 12px; background: var(--card); color: var(--txt); cursor: pointer; font-size: 17px; transition: all .3s; text-align: center; margin: 5px 0; font-weight: 600; position: relative; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
         .prod-select-card:hover { transform: scale(1.02); }
+        .prod-select-card:active { background: var(--hover); }
+        .prod-select-card .prod-main { cursor: pointer; padding: 10px 0; }
         .prod-select-card .prod-actions { display: flex; gap: 5px; justify-content: center; margin-top: 8px; }
-        .prod-select-card .prod-edit-btn { padding: 4px 10px; border: 1px solid var(--brd); border-radius: 5px; background: var(--card); color: var(--txt2); cursor: pointer; font-size: 11px; }
+        .prod-select-card .prod-edit-btn { padding: 6px 12px; border: 1px solid var(--brd); border-radius: 5px; background: var(--card); color: var(--txt2); cursor: pointer; font-size: 12px; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
         .prod-select-card .prod-edit-btn:hover { background: var(--admin); color: #fff; border-color: var(--admin); }
+        .prod-select-card .prod-edit-btn:active { background: var(--admin); color: #fff; border-color: var(--admin); }
         .custom-user-btn { font-style: italic; }
         .app-container { max-width: 1400px; margin: 0 auto; padding: 20px; }
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding: 15px; background: var(--card); border-radius: 15px; border: 2px solid var(--brd); box-shadow: var(--shadow); flex-wrap: wrap; gap: 10px; }
@@ -296,7 +301,6 @@
     var showLimitsPanel = false, pinboardOpen = true, alertsOpen = true;
     var lastTelegramReport = '';
 
-    // Инициализация структур по умолчанию
     function getDefaultStructure() {
         return {
             supplies: { groups: { 'Скотч': ['Скотч желтый', 'Скотч прозрачный'], 'Крючки': ['Крючки черные', 'Крючки белые'], 'Клей': ['Клей ПВА', 'Клей гель'], 'Рамки': ['Рамки черные', 'Рамки белые'] }, singles: ['Стрэйтч', 'Пластик белый', 'Коробки', 'Грунт', 'Пупырка', 'Оргстекло', 'Доски'] },
@@ -324,19 +328,11 @@
                 if (d.structure) productionStructures[key] = d.structure;
                 if (d.groupOrder) groupOrder = d.groupOrder;
                 else groupOrder = getDefaultGroupOrder();
-            } else {
-                resetProductionData();
-            }
+            } else { resetProductionData(); }
             if (!productionStructures[key]) productionStructures[key] = getDefaultStructure();
             if (!groupOrder || Object.keys(groupOrder).length === 0) groupOrder = getDefaultGroupOrder();
-        } catch(e) {
-            console.error('Firebase load error:', e);
-            loadFromLocalStorage();
-        }
-        renderAll();
-        updateStats();
-        renderNotes();
-        renderGoals();
+        } catch(e) { console.error('Firebase load error:', e); loadFromLocalStorage(); }
+        renderAll(); updateStats(); renderNotes(); renderGoals();
     }
 
     function loadFromLocalStorage() {
@@ -497,32 +493,71 @@
         else if (pass === USER_PASSWORD) { showUserSelect(); }
         else { document.getElementById('passError').style.display = 'block'; document.getElementById('passInput').value = ''; }
     }
+    
     function showUserSelect() {
         var html = '<h2>👤 Кто вы?</h2><div class="user-list">';
-        USER_LIST.forEach(function(u) { html += '<button class="user-btn" style="border-left:4px solid ' + USER_COLORS[u] + '" onclick="selectUser(\'' + u + '\')">' + u + '</button>'; });
-        html += '<button class="user-btn custom-user-btn" onclick="loginCustom()">✏️ Другое имя...</button></div>';
+        USER_LIST.forEach(function(u) { 
+            html += '<button class="user-btn" style="border-left:4px solid ' + USER_COLORS[u] + '" data-user="' + u + '">' + u + '</button>'; 
+        });
+        html += '<button class="user-btn custom-user-btn" data-custom="true">✏️ Другое имя...</button></div>';
         document.getElementById('authCard').innerHTML = html;
+        
+        // Добавляем обработчики событий для телефонов и компьютеров
+        setTimeout(function() {
+            var buttons = document.querySelectorAll('.user-btn');
+            buttons.forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    if (this.dataset.custom) { loginCustom(); }
+                    else { selectUser(this.dataset.user); }
+                });
+                btn.addEventListener('touchend', function(e) {
+                    e.preventDefault();
+                    if (this.dataset.custom) { loginCustom(); }
+                    else { selectUser(this.dataset.user); }
+                });
+            });
+        }, 100);
     }
+    
     function selectUser(userName) { currentUser = userName; isAdmin = false; ilyaAdminMode = false; showProductionSelect(); }
     function loginCustom() { var n = prompt('Введите ваше имя:'); if (n && n.trim()) { currentUser = n.trim(); isAdmin = false; ilyaAdminMode = false; showProductionSelect(); } }
     
-    // ===== ВЫБОР ПРОИЗВОДСТВА (ДЛЯ ВСЕХ, ВКЛЮЧАЯ АДМИНА) =====
+    // ===== ВЫБОР ПРОИЗВОДСТВА (С ПОДДЕРЖКОЙ ТАЧ-СОБЫТИЙ) =====
     function showProductionSelect() {
         var html = '<h2>🏭 Выберите производство</h2><div class="user-list">';
         productionList.forEach(function(p) {
             var color = PRODUCTION_COLORS[p] || '#636e72';
             html += '<div class="prod-select-card" style="border-left:5px solid ' + color + '">';
-            html += '<div onclick="selectProduction(\'' + p + '\')" style="cursor:pointer">' + p + '</div>';
-            // Кнопки управления (только для админа)
+            html += '<div class="prod-main" data-prod="' + p + '">' + p + '</div>';
             if (currentUser === 'Админ') {
                 html += '<div class="prod-actions">';
-                html += '<button class="prod-edit-btn" onclick="event.stopPropagation();renameProductionInline(\'' + p + '\')">✏️ Переименовать</button>';
+                html += '<button class="prod-edit-btn" data-rename="' + p + '">✏️ Переименовать</button>';
                 html += '</div>';
             }
             html += '</div>';
         });
-        html += '<br><button class="btn btn-minus10" onclick="goBackToAuth()" style="margin-top:10px">↩ Назад</button></div>';
+        html += '<br><button class="btn btn-minus10" id="btnBack" style="margin-top:10px">↩ Назад</button></div>';
         document.getElementById('authCard').innerHTML = html;
+        
+        // Обработчики событий
+        setTimeout(function() {
+            // Кнопки выбора производства
+            document.querySelectorAll('.prod-main').forEach(function(el) {
+                el.addEventListener('click', function() { selectProduction(this.dataset.prod); });
+                el.addEventListener('touchend', function(e) { e.preventDefault(); selectProduction(this.dataset.prod); });
+            });
+            // Кнопки переименования
+            document.querySelectorAll('.prod-edit-btn').forEach(function(el) {
+                el.addEventListener('click', function(e) { e.stopPropagation(); renameProductionInline(this.dataset.rename); });
+                el.addEventListener('touchend', function(e) { e.preventDefault(); e.stopPropagation(); renameProductionInline(this.dataset.rename); });
+            });
+            // Кнопка Назад
+            var backBtn = document.getElementById('btnBack');
+            if (backBtn) {
+                backBtn.addEventListener('click', goBackToAuth);
+                backBtn.addEventListener('touchend', function(e) { e.preventDefault(); goBackToAuth(); });
+            }
+        }, 100);
     }
     
     function renameProductionInline(oldName) {
